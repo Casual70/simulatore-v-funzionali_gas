@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulatore Verifiche Funzionali Gas - Cabina REMI / GRF (Tipo 3)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-block">
+      <div class="badge-tipo3" aria-hidden="true">UNI/PdR 39 · TIPO 3</div>
+      <div>
+        <h1>Simulatore Cabina REMI &amp; Verifiche Funzionali Gas</h1>
+        <p class="subtitle">Addestramento su Riduttori di Pressione (stile Pietro Fiorentini), Monitor, Blocchi SB/LA e Seconda Linea</p>
+      </div>
+    </div>
+
+    <nav class="toolbar" aria-label="Controlli principali simulatore">
+      <div class="control-group">
+        <label for="preset-select">Configurazione Impianto:</label>
+        <select id="preset-select">
+          <option value="remi-ap">Cabina REMI 1ª→4ª Specie (Aperflux 851 + Monitor + SB/82 · 24 → 1,5 bar)</option>
+          <option value="grf-mp">Gruppo GRF 4ª→7ª Specie (Reval 182 / Norval + Monitor + Blocco · 5 bar → 22 mbar)</option>
+          <option value="dival-bp">Gruppo Azione Diretta (Dival 600 + Blocco LA incorporato · 1,5 bar → 23 mbar)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="mode-select">Modalità Operativa:</label>
+        <select id="mode-select">
+          <option value="free">Simulazione Libera P&amp;ID</option>
+          <option value="guided-full">Procedura Guidata Tipo 3: Verifica Completa + Scambio 2ª Linea</option>
+          <option value="guided-block-l2">Procedura Guidata: Verifica Blocco OPSO/UPSO su 2ª Linea</option>
+          <option value="fault-sim">Scenario Guasto: Cedimento Regolatore 1ª Linea e Subentro Emergenza</option>
+        </select>
+      </div>
+
+      <div class="toolbar-actions">
+        <button type="button" id="btn-reset" class="btn btn-secondary">Ripristina Impianto</button>
+        <button type="button" id="btn-open-manual" class="btn btn-outline">Manuale Tecnico Tipo 3</button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="workspace">
+    <!-- Barra di stato / Procedura guidata (visibile in modalità guidata) -->
+    <section id="guided-banner" class="guided-banner" aria-live="polite" hidden>
+      <div class="guided-header">
+        <div class="guided-step-indicator">
+          <span class="step-pill" id="guided-step-num">PASSO 1 / 6</span>
+          <h2 id="guided-step-title">Messa in servizio della Seconda Linea (Linea di Riserva)</h2>
+        </div>
+        <div class="guided-controls">
+          <button type="button" id="btn-prev-step" class="btn btn-sm btn-outline">◀ Precedente</button>
+          <button type="button" id="btn-check-step" class="btn btn-sm btn-primary">Verifica Passo ✔</button>
+          <button type="button" id="btn-next-step" class="btn btn-sm btn-outline">Successivo ▶</button>
+        </div>
+      </div>
+      <p id="guided-step-desc" class="guided-desc"></p>
+      <div id="guided-feedback" class="guided-feedback" hidden></div>
+    </section>
+
+    <!-- Griglia principale: P&ID al centro + Pannello Strumenti Tecnico a destra -->
+    <div class="main-grid">
+      <section class="pid-panel" aria-labelledby="pid-heading">
+        <div class="panel-header">
+          <h2 id="pid-heading">Schema P&amp;ID Interattivo di Cabina (Doppia Linea: Principale + Seconda Linea)</h2>
+          <div class="kpi-strip">
+            <div class="kpi-box">
+              <span class="kpi-label">Pressione Monte (Pu)</span>
+              <strong class="kpi-value" id="kpi-pu">24,00 bar</strong>
+            </div>
+            <div class="kpi-box kpi-highlight" id="kpi-pd-box">
+              <span class="kpi-label">Collettore Valle (Pd)</span>
+              <strong class="kpi-value" id="kpi-pd">1,50 bar</strong>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Portata Utenza (Q)</span>
+              <strong class="kpi-value" id="kpi-flow">450 Sm³/h</strong>
+            </div>
+            <div class="kpi-box" id="kpi-supply-status">
+              <span class="kpi-label">Stato Erogazione</span>
+              <strong class="kpi-value status-ok" id="kpi-status-text">REGOLARE (L1)</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- SVG P&ID Interattivo -->
+        <div class="svg-container">
+          <svg id="pid-svg" viewBox="0 0 1120 610" role="img" aria-label="Schema idraulico P&ID cabina di riduzione gas a doppia linea con valvole, blocchi, monitor e regolatori">
+            <defs>
+              <linearGradient id="pipe-hp" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ef4444"/>
+                <stop offset="100%" stop-color="#991b1b"/>
+              </linearGradient>
+              <linearGradient id="pipe-mp" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#38bdf8"/>
+                <stop offset="100%" stop-color="#0284c7"/>
+              </linearGradient>
+              <linearGradient id="pipe-isolated" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#64748b"/>
+                <stop offset="100%" stop-color="#334155"/>
+              </linearGradient>
+              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur"/>
+                <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+              </filter>
+            </defs>
+
+            <!-- Sfondo griglia tecnica -->
+            <rect width="1120" height="610" fill="#0f172a" rx="10"/>
+
+            <!-- Etichette macro-zone -->
+            <text x="30" y="34" class="svg-zone-label">INGRESSO MONTE (Pu)</text>
+            <text x="415" y="34" class="svg-zone-label">TRENO DI REGOLAZIONE E SICUREZZA (PIETRO FIORENTINI)</text>
+            <text x="920" y="34" class="svg-zone-label">COLLETTORE VALLE (Pd)</text>
+
+            <!-- Collettore Monte -->
+            <path d="M 25 300 L 95 300" class="pipe-main pipe-hp-stroke"/>
+            <path d="M 95 165 L 95 455" class="pipe-main pipe-hp-stroke"/>
+
+            <!-- Manometro Monte -->
+            <g transform="translate(58, 235)">
+              <line x1="0" y1="25" x2="0" y2="65" stroke="#94a3b8" stroke-width="2"/>
+              <circle cx="0" cy="0" r="24" class="gauge-face"/>
+              <text x="0" y="-4" class="gauge-title">Pu</text>
+              <text x="0" y="10" id="svg-gauge-pu" class="gauge-reading">24.0</text>
+            </g>
+
+            <!-- ==================== LINEA 1 (PRINCIPALE - ALTO) ==================== -->
+            <g id="svg-line-1">
+              <rect x="115" y="55" width="795" height="215" rx="8" class="line-box" id="box-line-1"/>
+              <text x="130" y="78" class="line-title">LINEA 1 — PRINCIPALE (ATTIVA)</text>
+              <text x="895" y="78" text-anchor="end" class="line-status-badge" id="svg-l1-badge">IN SERVIZIO</text>
+
+              <!-- Tubazioni Linea 1 -->
+              <path id="pipe-l1-in" d="M 95 165 L 185 165" class="pipe-segment pipe-hp-stroke"/>
+              <path id="pipe-l1-mid" d="M 225 165 L 770 165" class="pipe-segment pipe-mp-stroke"/>
+              <path id="pipe-l1-out" d="M 810 165 L 960 165" class="pipe-segment pipe-mp-stroke"/>
+
+              <!-- Prese d'impulso tratteggiate L1 (a monte di V2-L1 sul tronco L1) -->
+              <!-- Impulso Blocco SB-L1 -->
+              <path id="imp-blk-l1" d="M 325 130 L 325 96 L 705 96 L 705 165" class="impulse-line"/>
+              <!-- Impulso Monitor MON-L1 -->
+              <path id="imp-mon-l1" d="M 465 130 L 465 110 L 720 110 L 720 165" class="impulse-line"/>
+              <!-- Impulso Regolatore REG-L1 -->
+              <path id="imp-reg-l1" d="M 605 130 L 605 124 L 735 124 L 735 165" class="impulse-line"/>
+
+              <!-- By-pass V1-L1 -->
+              <path id="pipe-bp-l1" d="M 165 165 L 165 220 L 245 220 L 245 165" class="bypass-line"/>
+              <g class="svg-interactive" id="svg-btn-bp-l1" transform="translate(205, 220)">
+                <rect x="-26" y="-14" width="52" height="28" rx="5" class="comp-hit"/>
+                <polygon points="-10,-7 10,7 10,-7 -10,7" id="shape-bp-l1" class="valve-closed"/>
+                <text x="0" y="21" class="comp-sublabel">BP-L1</text>
+              </g>
+
+              <!-- Valvola Monte V1-L1 -->
+              <g class="svg-interactive" id="svg-btn-v1-l1" transform="translate(205, 165)">
+                <rect x="-28" y="-26" width="56" height="52" rx="6" class="comp-hit"/>
+                <polygon points="-16,-12 16,12 16,-12 -16,12" id="shape-v1-l1" class="valve-open"/>
+                <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
+                <text x="0" y="-18" class="comp-label">V1-L1</text>
+              </g>
+
+              <!-- Valvola di Blocco SB-L1 -->
+              <g class="svg-interactive" id="svg-btn-sb-l1" transform="translate(325, 165)">
+                <rect x="-38" y="-52" width="76" height="90" rx="6" class="comp-hit"/>
+                <!-- Attuatore / Testata blocco -->
+                <rect x="-22" y="-44" width="44" height="22" rx="4" id="head-sb-l1" class="slam-armed"/>
+                <line x1="0" y1="-22" x2="0" y2="0" stroke="#e2e8f0" stroke-width="3"/>
+                <rect x="-20" y="-14" width="40" height="28" rx="4" class="reg-body"/>
+                <text x="0" y="-29" class="comp-badge-text" id="txt-sb-l1">ARMATO</text>
+                <text x="0" y="28" class="comp-label">BLOCCO SB-L1</text>
+                <text x="0" y="41" class="comp-sublabel" id="sub-sb-l1">Max 1.90 | Min 0.80</text>
+              </g>
+
+              <!-- Rubinetto 3 vie presa impulso Blocco L1 -->
+              <g class="svg-interactive" id="svg-btn-rblk-l1" transform="translate(375, 96)">
+                <circle cx="0" cy="0" r="9" id="dot-rblk-l1" class="cock-open"/>
+                <text x="0" y="-12" class="cock-label" id="lbl-rblk-l1">Imp.L1: LINEA</text>
+              </g>
+
+              <!-- Regolatore MONITOR L1 -->
+              <g class="svg-interactive" id="svg-btn-mon-l1" transform="translate(465, 165)">
+                <rect x="-38" y="-50" width="76" height="88" rx="6" class="comp-hit"/>
+                <ellipse cx="0" cy="-34" rx="24" ry="11" class="pilot-dome"/>
+                <line x1="0" y1="-23" x2="0" y2="-14" stroke="#94a3b8" stroke-width="3"/>
+                <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-mon-l1" class="reg-monitor"/>
+                <text x="0" y="28" class="comp-label">MONITOR L1</text>
+                <text x="0" y="41" class="comp-sublabel" id="sub-mon-l1">Set: 1.65 bar</text>
+              </g>
+
+              <!-- Regolatore PRINCIPALE L1 -->
+              <g class="svg-interactive" id="svg-btn-reg-l1" transform="translate(605, 165)">
+                <rect x="-38" y="-50" width="76" height="88" rx="6" class="comp-hit"/>
+                <ellipse cx="0" cy="-34" rx="24" ry="11" class="pilot-dome-active"/>
+                <line x1="0" y1="-23" x2="0" y2="-14" stroke="#38bdf8" stroke-width="3"/>
+                <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-reg-l1" class="reg-active"/>
+                <text x="0" y="28" class="comp-label">REG. PRINC. L1</text>
+                <text x="0" y="41" class="comp-sublabel" id="sub-reg-l1">Set: 1.50 bar</text>
+              </g>
+
+              <!-- Rubinetto isolamento presa impulso Regolatore L1 -->
+              <g class="svg-interactive" id="svg-btn-rreg-l1" transform="translate(665, 124)">
+                <circle cx="0" cy="0" r="8" id="dot-rreg-l1" class="cock-open"/>
+                <text x="0" y="-11" class="cock-label" id="lbl-rreg-l1">Imp.Reg</text>
+              </g>
+
+              <!-- Manometro di Tronco Linea 1 + Candela di Sfiato SF-L1 -->
+              <g transform="translate(752, 222)">
+                <line x1="0" y1="-57" x2="0" y2="-22" stroke="#94a3b8" stroke-width="2"/>
+                <circle cx="0" cy="0" r="22" class="gauge-face"/>
+                <text x="0" y="-4" class="gauge-title">P tronco L1</text>
+                <text x="0" y="10" id="svg-gauge-l1" class="gauge-reading">1.50</text>
+              </g>
+
+              <!-- Candela di sfiato SF-L1 -->
+              <g class="svg-interactive" id="svg-btn-sf-l1" transform="translate(752, 165)">
+                <line x1="0" y1="0" x2="0" y2="-38" stroke="#fbbf24" stroke-width="2.5"/>
+                <rect x="-24" y="-56" width="48" height="34" rx="5" class="comp-hit"/>
+                <circle cx="0" cy="-38" r="9" id="dot-sf-l1" class="cock-closed"/>
+                <text x="0" y="-52" class="cock-label" id="lbl-sf-l1">Sfiato SF-L1</text>
+              </g>
+
+              <!-- Valvola Valle V2-L1 -->
+              <g class="svg-interactive" id="svg-btn-v2-l1" transform="translate(790, 165)">
+                <rect x="-28" y="-26" width="56" height="52" rx="6" class="comp-hit"/>
+                <polygon points="-16,-12 16,12 16,-12 -16,12" id="shape-v2-l1" class="valve-open"/>
+                <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
+                <text x="0" y="-18" class="comp-label">V2-L1</text>
+              </g>
+            </g>
+
+            <!-- ==================== LINEA 2 (SECONDA LINEA / RISERVA - BASSO) ==================== -->
+            <g id="svg-line-2">
+              <rect x="115" y="345" width="795" height="215" rx="8" class="line-box" id="box-line-2"/>
+              <text x="130" y="368" class="line-title">LINEA 2 — SECONDA LINEA (EMERGENZA / RISERVA)</text>
+              <text x="895" y="368" text-anchor="end" class="line-status-badge badge-standby" id="svg-l2-badge">STAND-BY AUTOMATICO</text>
+
+              <!-- Tubazioni Linea 2 -->
+              <path id="pipe-l2-in" d="M 95 455 L 185 455" class="pipe-segment pipe-hp-stroke"/>
+              <path id="pipe-l2-mid" d="M 225 455 L 770 455" class="pipe-segment pipe-mp-stroke"/>
+              <path id="pipe-l2-out" d="M 810 455 L 960 455" class="pipe-segment pipe-mp-stroke"/>
+
+              <!-- Prese d'impulso tratteggiate L2 -->
+              <path id="imp-blk-l2" d="M 325 420 L 325 386 L 705 386 L 705 455" class="impulse-line"/>
+              <path id="imp-mon-l2" d="M 465 420 L 465 400 L 720 400 L 720 455" class="impulse-line"/>
+              <path id="imp-reg-l2" d="M 605 420 L 605 414 L 735 414 L 735 455" class="impulse-line"/>
+
+              <!-- By-pass V1-L2 -->
+              <path id="pipe-bp-l2" d="M 165 455 L 165 510 L 245 510 L 245 455" class="bypass-line"/>
+              <g class="svg-interactive" id="svg-btn-bp-l2" transform="translate(205, 510)">
+                <rect x="-26" y="-14" width="52" height="28" rx="5" class="comp-hit"/>
+                <polygon points="-10,-7 10,7 10,-7 -10,7" id="shape-bp-l2" class="valve-closed"/>
+                <text x="0" y="21" class="comp-sublabel">BP-L2</text>
+              </g>
+
+              <!-- Valvola Monte V1-L2 -->
+              <g class="svg-interactive" id="svg-btn-v1-l2" transform="translate(205, 455)">
+                <rect x="-28" y="-26" width="56" height="52" rx="6" class="comp-hit"/>
+                <polygon points="-16,-12 16,12 16,-12 -16,12" id="shape-v1-l2" class="valve-open"/>
+                <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
+                <text x="0" y="-18" class="comp-label">V1-L2</text>
+              </g>
+
+              <!-- Valvola di Blocco SB-L2 -->
+              <g class="svg-interactive" id="svg-btn-sb-l2" transform="translate(325, 455)">
+                <rect x="-38" y="-52" width="76" height="90" rx="6" class="comp-hit"/>
+                <rect x="-22" y="-44" width="44" height="22" rx="4" id="head-sb-l2" class="slam-armed"/>
+                <line x1="0" y1="-22" x2="0" y2="0" stroke="#e2e8f0" stroke-width="3"/>
+                <rect x="-20" y="-14" width="40" height="28" rx="4" class="reg-body"/>
+                <text x="0" y="-29" class="comp-badge-text" id="txt-sb-l2">ARMATO</text>
+                <text x="0" y="28" class="comp-label">BLOCCO SB-L2</text>
+                <text x="0" y="41" class="comp-sublabel" id="sub-sb-l2">Max 1.90 | Min 0.80</text>
+              </g>
+
+              <!-- Rubinetto 3 vie presa impulso Blocco L2 -->
+              <g class="svg-interactive" id="svg-btn-rblk-l2" transform="translate(375, 386)">
+                <circle cx="0" cy="0" r="9" id="dot-rblk-l2" class="cock-open"/>
+                <text x="0" y="-12" class="cock-label" id="lbl-rblk-l2">Imp.L2: LINEA</text>
+              </g>
+
+              <!-- Regolatore MONITOR L2 -->
+              <g class="svg-interactive" id="svg-btn-mon-l2" transform="translate(465, 455)">
+                <rect x="-38" y="-50" width="76" height="88" rx="6" class="comp-hit"/>
+                <ellipse cx="0" cy="-34" rx="24" ry="11" class="pilot-dome"/>
+                <line x1="0" y1="-23" x2="0" y2="-14" stroke="#94a3b8" stroke-width="3"/>
+                <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-mon-l2" class="reg-monitor"/>
+                <text x="0" y="28" class="comp-label">MONITOR L2</text>
+                <text x="0" y="41" class="comp-sublabel" id="sub-mon-l2">Set: 1.65 bar</text>
+              </g>
+
+              <!-- Regolatore PRINCIPALE L2 (Seconda Linea) -->
+              <g class="svg-interactive" id="svg-btn-reg-l2" transform="translate(605, 455)">
+                <rect x="-38" y="-50" width="76" height="88" rx="6" class="comp-hit"/>
+                <ellipse cx="0" cy="-34" rx="24" ry="11" class="pilot-dome-active"/>
+                <line x1="0" y1="-23" x2="0" y2="-14" stroke="#38bdf8" stroke-width="3"/>
+                <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-reg-l2" class="reg-standby"/>
+                <text x="0" y="28" class="comp-label">REG. 2ª LINEA</text>
+                <text x="0" y="41" class="comp-sublabel" id="sub-reg-l2">Set: 1.35 bar</text>
+              </g>
+
+              <!-- Rubinetto isolamento presa impulso Regolatore L2 -->
+              <g class="svg-interactive" id="svg-btn-rreg-l2" transform="translate(665, 414)">
+                <circle cx="0" cy="0" r="8" id="dot-rreg-l2" class="cock-open"/>
+                <text x="0" y="-11" class="cock-label" id="lbl-rreg-l2">Imp.Reg</text>
+              </g>
+
+              <!-- Manometro di Tronco Linea 2 + Candela di Sfiato SF-L2 -->
+              <g transform="translate(752, 512)">
+                <line x1="0" y1="-57" x2="0" y2="-22" stroke="#94a3b8" stroke-width="2"/>
+                <circle cx="0" cy="0" r="22" class="gauge-face"/>
+                <text x="0" y="-4" class="gauge-title">P tronco L2</text>
+                <text x="0" y="10" id="svg-gauge-l2" class="gauge-reading">1.50</text>
+              </g>
+
+              <!-- Candela di sfiato SF-L2 -->
+              <g class="svg-interactive" id="svg-btn-sf-l2" transform="translate(752, 455)">
+                <line x1="0" y1="0" x2="0" y2="-38" stroke="#fbbf24" stroke-width="2.5"/>
+                <rect x="-24" y="-56" width="48" height="34" rx="5" class="comp-hit"/>
+                <circle cx="0" cy="-38" r="9" id="dot-sf-l2" class="cock-closed"/>
+                <text x="0" y="-52" class="cock-label" id="lbl-sf-l2">Sfiato SF-L2</text>
+              </g>
+
+              <!-- Valvola Valle V2-L2 -->
+              <g class="svg-interactive" id="svg-btn-v2-l2" transform="translate(790, 455)">
+                <rect x="-28" y="-26" width="56" height="52" rx="6" class="comp-hit"/>
+                <polygon points="-16,-12 16,12 16,-12 -16,12" id="shape-v2-l2" class="valve-open"/>
+                <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
+                <text x="0" y="-18" class="comp-label">V2-L2</text>
+              </g>
+            </g>
+
+            <!-- ==================== COLLETTORE DI VALLE E VALVOLA DI SFIORO ==================== -->
+            <path d="M 960 165 L 960 455" class="pipe-main pipe-mp-stroke" id="pipe-manifold-out"/>
+            <path d="M 960 305 L 1095 305" class="pipe-main pipe-mp-stroke" id="pipe-outlet-main"/>
+
+            <!-- Valvola di Sfioro (VS) sul collettore di valle -->
+            <g class="svg-interactive" id="svg-btn-vs" transform="translate(1015, 165)">
+              <line x1="-55" y1="0" x2="0" y2="0" stroke="#38bdf8" stroke-width="5"/>
+              <line x1="0" y1="0" x2="0" y2="-45" stroke="#fbbf24" stroke-width="3"/>
+              <rect x="-28" y="-42" width="56" height="58" rx="6" class="comp-hit"/>
+              <polygon points="-14,-18 14,-18 0,4" id="shape-vs" class="relief-closed"/>
+              <text x="0" y="-52" class="comp-label">SFIORO (VS)</text>
+              <text x="0" y="25" class="comp-sublabel" id="sub-vs">Set: 1.75 bar</text>
+            </g>
+
+            <!-- Manometro Collettore Valle (Pd) -->
+            <g transform="translate(1038, 395)">
+              <line x1="0" y1="-90" x2="0" y2="-28" stroke="#94a3b8" stroke-width="2"/>
+              <circle cx="0" cy="0" r="28" class="gauge-face gauge-face-main"/>
+              <text x="0" y="-6" class="gauge-title">Pd VALLE</text>
+              <text x="0" y="12" id="svg-gauge-pd" class="gauge-reading gauge-reading-lg">1.50</text>
+            </g>
+          </svg>
+        </div>
+
+        <div class="pid-legend">
+          <span><i class="dot dot-hp"></i> Alta Pressione Monte (Pu)</span>
+          <span><i class="dot dot-mp"></i> Pressione Regolata Valle (Pd)</span>
+          <span><i class="dot dot-green"></i> Organo Aperto / Armato / Attivo</span>
+          <span><i class="dot dot-amber"></i> Monitor / Riserva / Sfiato Attivo</span>
+          <span><i class="dot dot-red"></i> Chiuso / Blocco Scattato</span>
+          <span class="legend-hint">💡 Clicca su qualsiasi componente nello schema per ispezionarlo o manovrarlo</span>
+        </div>
+      </section>
+
+      <!-- Pannello Destro: Inspector Componente + Cassettina Prova + Controlli Rete -->
+      <aside class="inspector-panel" aria-label="Pannello Manovre e Strumentazione Tecnico Tipo 3">
+        <!-- Sezione 1: Componente Selezionato -->
+        <section class="card inspector-card" aria-labelledby="inspector-title">
+          <div class="card-header">
+            <span class="card-tag" id="inspector-tag">ORGANO SELEZIONATO</span>
+            <h2 id="inspector-title">Blocco SB-L1 (1ª Linea)</h2>
+          </div>
+          <p id="inspector-desc" class="inspector-desc">
+            Dispositivo di blocco automatico per massima e minima pressione (OPSO/UPSO) tipo Pietro Fiorentini SB/82.
+          </p>
+          <div id="inspector-controls" class="inspector-controls">
+            <!-- Popolato dinamicamente da app.js in base al componente cliccato -->
+          </div>
+        </section>
+
+        <!-- Sezione 2: Cassettina / Pompa di Prova Pressione (Strumento Tecnico Tipo 3) -->
+        <section class="card testbox-card" aria-labelledby="testbox-title">
+          <div class="card-header">
+            <span class="card-tag tag-amber">STRUMENTO IN DOTAZIONE</span>
+            <h2 id="testbox-title">Cassettina / Pompa di Prova</h2>
+          </div>
+
+          <div class="form-row">
+            <label for="testbox-target">Presa di Test Collegata:</label>
+            <select id="testbox-target">
+              <option value="none">— Scollegata (Riposta in borsa) —</option>
+              <option value="blk-l1">Presa Impulso Blocco SB-L1 (1ª Linea)</option>
+              <option value="blk-l2">Presa Impulso Blocco SB-L2 (2ª Linea)</option>
+              <option value="vs">Presa Test Valvola di Sfioro (VS)</option>
+            </select>
+          </div>
+
+          <div id="testbox-body" class="testbox-body" inert>
+            <div class="digital-manometer">
+              <div class="mano-top">
+                <span>MANOMETRO CAMPIONE DIGITALE</span>
+                <span id="testbox-status-pill" class="mano-pill">IN LINEA</span>
+              </div>
+              <div class="mano-value" id="testbox-readout">1,50 bar</div>
+              <div class="mano-Memory">
+                <span>Ultimo scatto rilevato: <strong id="testbox-last-trip">—</strong></span>
+              </div>
+            </div>
+
+            <div class="slider-group">
+              <label for="testbox-slider">
+                <span>Pressione Iniettata nella Camera:</span>
+              </label>
+              <input type="range" id="testbox-slider" min="0" max="3" step="0.01" value="1.50">
+            </div>
+
+            <div class="fine-buttons">
+              <button type="button" class="btn btn-xs btn-outline" data-pump-delta="-0.10">--</button>
+              <button type="button" class="btn btn-xs btn-outline" data-pump-delta="-0.02">- Fine</button>
+              <button type="button" class="btn btn-xs btn-outline" id="btn-pump-sync">Allinea a Pd</button>
+              <button type="button" class="btn btn-xs btn-outline" data-pump-delta="0.02">+ Fine</button>
+              <button type="button" class="btn btn-xs btn-outline" data-pump-delta="0.10">++</button>
+            </div>
+            <p class="helper-note" id="testbox-hint">
+              Ricorda: per testare il blocco con la pompa esterna senza mandare in sovrapressione la rete, isola prima il rubinetto presa d'impulso (posizione TEST).
+            </p>
+          </div>
+        </section>
+
+        <!-- Sezione 3: Condizioni Rete e Simulazione Anomalie -->
+        <section class="card network-card" aria-labelledby="network-title">
+          <div class="card-header">
+            <span class="card-tag"> CONDIZIONI CAMPO &amp; RETE</span>
+            <h2 id="network-title">Carico Utenza e Simulazione Guasti</h2>
+          </div>
+
+          <div class="slider-group">
+            <label for="flow-slider">
+              <span>Portata richiesta a valle (Q): <strong id="flow-val-label">450 Sm³/h</strong></span>
+            </label>
+            <input type="range" id="flow-slider" min="0" max="1000" step="10" value="450">
+          </div>
+
+          <div class="fault-toggles">
+            <label for="chk-fault-reg1" class="checkbox-label">
+              <input type="checkbox" id="chk-fault-reg1" class="visually-hidden">
+              <span>Simula rottura membrana / spalancamento Reg. L1</span>
+            </label>
+            <label for="chk-fault-dirt1" class="checkbox-label">
+              <input type="checkbox" id="chk-fault-dirt1" class="visually-hidden">
+              <span>Simula trafilamento sede otturatore Reg. L1 (SG anomalo)</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Sezione 4: Diario Eventi / Registro Manovre -->
+        <section class="card log-card" aria-labelledby="log-title">
+          <div class="card-header">
+            <span class="card-tag">REGISTRO DI CABINA</span>
+            <h2 id="log-title">Cronologia Manovre &amp; Allarmi</h2>
+          </div>
+          <ul id="event-log" class="event-log" aria-live="polite"></ul>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Dialog Nativo Manuale Tecnico Tipo 3 (con closedby="any" per light-dismiss) -->
+  <dialog id="manual-dialog" closedby="any" aria-labelledby="manual-dialog-title">
+    <div class="dialog-inner">
+      <header class="dialog-header">
+        <div>
+          <span class="card-tag">DOCUMENTAZIONE ADDESTRAMENTO</span>
+          <h2 id="manual-dialog-title">Guida Operativa Verifiche Funzionali (UNI/PdR 39 - Tipo 3)</h2>
+        </div>
+        <form method="dialog">
+          <button type="submit" value="close" class="btn btn-sm btn-outline" autofocus>Chiudi ✕</button>
+        </form>
+      </header>
+
+      <div class="dialog-content">
+        <details name="manual-acc" open>
+          <summary>1. Architettura Cabina REMI / GRF a Doppia Linea (Pietro Fiorentini)</summary>
+          <div class="acc-body">
+            <p>
+              Nelle cabine di riduzione (REMI / GRF) la continuità del servizio (sicurezza positiva) è garantita da due linee in parallelo:
+            </p>
+            <ul>
+              <li><strong>Linea 1 (Principale / Attiva):</strong> Eroga il gas in condizioni ordinarie. È dotata di Valvola di Blocco (es. <code>SB/82</code> o <code>LA</code>), Regolatore con funzione di <strong>Monitor</strong> in serie ($P_{m1} &gt; P_{d1}$) e <strong>Regolatore Principale</strong> (es. <code>Aperflux 851</code>, <code>Reval 182</code>, <code>Norval</code>) tarato a $P_{d1}$.</li>
+              <li><strong>Linea 2 (Seconda Linea / Emergenza):</strong> Rimane in <em>stand-by automatico</em> con valvole <code>V1-L2</code> e <code>V2-L2</code> aperte e blocco armato, ma con il regolatore tarato a una pressione leggermente inferiore ($P_{d2} &lt; P_{d1}$). Finché la Linea 1 mantiene $P_d = P_{d1}$, il regolatore della Seconda Linea sente una pressione superiore al proprio set-point e resta chiuso. Se la Linea 1 blocca per guasto, $P_d$ scende fino a $P_{d2}$ e la Seconda Linea entra istantaneamente in erogazione.</li>
+              <li><strong>Valvola di Sfioro (VS):</strong> Posta a valle, scarica in atmosfera piccoli volumi di gas (es. trafilamenti termici o transitori rapidi) a una soglia intermedia tra il Monitor e il Blocco di Massima, evitando scatti intempestivi del blocco.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details name="manual-acc">
+          <summary>2. Scala delle Tarature (Coordinamento Organi di Regolazione e Sicurezza)</summary>
+          <div class="acc-body">
+            <p>Il corretto coordinamento pressorio evita disservizi all'utenza:</p>
+            <ul>
+              <li><strong>Blocco di Minima (UPSO - $P_{b,\min}$):</strong> Soglia più bassa; chiude se la pressione a valle crolla per rottura tubazione o esaurimento monte.</li>
+              <li><strong>Regolatore Seconda Linea ($P_{d2}$):</strong> Tarato appena sotto il regolatore principale della 1ª linea.</li>
+              <li><strong>Regolatore Principale 1ª Linea ($P_{d1}$):</strong> Pressione nominale d'esercizio della rete a valle.</li>
+              <li><strong>Regolatore Monitor ($P_{m1}$):</strong> Completamente aperto in marcia normale; entra in regolazione solo se il regolatore principale si guasta in apertura.</li>
+              <li><strong>Valvola di Sfioro ($P_{vs}$):</strong> Soglia superiore al Monitor ma inferiore al Blocco di Massima.</li>
+              <li><strong>Blocco di Massima (OPSO - $P_{b,\max}$):</strong> Ultima barriera di sicurezza; chiude ermeticamente la linea se anche il Monitor non riesce a contenere la pressione entro la MIP.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details name="manual-acc">
+          <summary>3. Procedura Passo-Passo per la Verifica Funzionale (Operatore Tipo 3)</summary>
+          <div class="acc-body">
+            <ol>
+              <li><strong>Scambio Linea (Passaggio su 2ª Linea):</strong> Verificare che la Seconda Linea abbia il blocco armato e le valvole aperte. Chiudere molto lentamente la valvola di valle <code>V2-L1</code> della Linea 1 osservando il manometro di collettore: la pressione deve scendere dolcemente da $P_{d1}$ a $P_{d2}$ senza scatti di blocco.</li>
+              <li><strong>Controllo Tenuta Interna (SG) del Regolatore L1:</strong> Con <code>V2-L1</code> chiusa (portata zero sulla L1), osservare il manometro di tronco L1 per verificare che la pressione si stabilizzi entro la classe di sovrapressione di chiusura ($SG$) senza salire verso la pressione di monte (che indicherebbe trafilamento dell'otturatore).</li>
+              <li><strong>Verifica del Monitor L1:</strong> Aprire leggermente lo sfiato a candela <code>SF-L1</code> per garantire un minimo flusso; forzare l'apertura del regolatore principale (o isolarne e scaricarne l'impulso / aumentarne temporaneamente il carico molla) e leggere sul manometro di tronco L1 la pressione regolata dal solo Monitor ($P_{m1}$).</li>
+              <li><strong>Verifica Valvola di Blocco (OPSO / UPSO):</strong> Ruotare il rubinetto a 3 vie della presa d'impulso blocco <code>R-BLK-L1</code> in posizione <em>TEST (Isolato dalla linea)</em>. Collegare la cassettina/pompa di prova, salire lentamente di pressione fino allo scatto per Massima (annotando il valore), poi riarmare e scendere lentamente fino allo scatto per Minima.</li>
+              <li><strong>Riarmo e Ritorno in Servizio Normale:</strong> Riportare il rubinetto d'impulso in <em>LINEA</em>, equalizzare la pressione a cavallo dell'otturatore di blocco, azionare la leva di riarmo del blocco <code>SB-L1</code> e riaprire gradualmente <code>V2-L1</code>. La Linea 1 riprende il comando a $P_{d1}$ e la Seconda Linea torna in stand-by.</li>
+            </ol>
+          </div>
+        </details>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
