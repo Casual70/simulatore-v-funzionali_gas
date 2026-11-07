@@ -69,7 +69,7 @@
           <div>
             <h2 id="pid-heading">Schema P&amp;ID Interattivo con Circuito di Pilotaggio e Prese d'Impulso</h2>
             <p class="tech-badge-line" id="plant-arch-subtitle">
-              Architettura: <strong>REGOLATORI PILOTATI (Normalmente Chiusi / Fail-Close)</strong> — Alimentazione Pilota da monte + Presa d'Impulso di valle
+              Architettura: <strong>REGOLATORI PILOTATI (Normalmente Chiusi / Fail-Close)</strong>
             </p>
           </div>
           <div class="kpi-strip">
@@ -80,6 +80,10 @@
             <div class="kpi-box">
               <span class="kpi-label">Tronco L1 (P_tr1)</span>
               <strong class="kpi-value" id="kpi-ptr1">1,50 bar</strong>
+            </div>
+            <div class="kpi-box">
+              <span class="kpi-label">Tronco L2 (P_tr2)</span>
+              <strong class="kpi-value" id="kpi-ptr2">1,50 bar</strong>
             </div>
             <div class="kpi-box kpi-highlight" id="kpi-pd-box">
               <span class="kpi-label">Collettore Valle (Pd)</span>
@@ -96,303 +100,368 @@
           </div>
         </div>
 
-        <!-- SVG P&ID Interattivo -->
-        <div class="svg-container">
-          <svg id="pid-svg" viewBox="0 0 1140 650" role="img" aria-label="Schema P&ID cabina REMI con circuito piloti, preriduttori, prese di impulso a monte o valle di V2, valvole e blocchi">
+        <!-- Barra Controllo Vista Linea (Doppia / Solo L1 / Solo L2) e Zoom -->
+        <div class="view-controls-bar" role="toolbar" aria-label="Controlli visualizzazione linee e zoom">
+          <div class="view-mode-group">
+            <span class="view-bar-label">Vista Schema:</span>
+            <button type="button" class="btn btn-xs btn-view active" data-view-mode="both">
+              Vista Completa (1ª + 2ª Linea)
+            </button>
+            <button type="button" class="btn btn-xs btn-view" data-view-mode="l1">
+              🔍 Focus Solo 1ª Linea (Principale)
+            </button>
+            <button type="button" class="btn btn-xs btn-view" data-view-mode="l2">
+              🔍 Focus Solo 2ª Linea (Riserva)
+            </button>
+          </div>
+
+          <!-- Stato sintetico dell'altra linea quando si è in modalità Focus singola linea -->
+          <div id="other-line-summary" class="other-line-summary" hidden>
+            <span id="other-line-text">2ª Linea: STAND-BY (1,35 bar)</span>
+          </div>
+
+          <div class="zoom-group">
+            <span class="view-bar-label">Zoom:</span>
+            <button type="button" class="btn btn-xs btn-outline" id="btn-zoom-out" aria-label="Riduci zoom">−</button>
+            <span class="zoom-readout" id="zoom-readout">100%</span>
+            <button type="button" class="btn btn-xs btn-outline" id="btn-zoom-in" aria-label="Aumenta zoom">+</button>
+            <button type="button" class="btn btn-xs btn-outline" id="btn-zoom-reset">Adatta</button>
+          </div>
+        </div>
+
+        <!-- SVG P&ID Interattivo (Spaziature ampliate, etichette su badge opachi senza sovrapposizioni) -->
+        <div class="svg-container" id="svg-scroll-wrap">
+          <svg id="pid-svg" viewBox="0 0 1200 760" role="img" aria-label="Schema P&ID cabina REMI con circuito piloti, preriduttori, prese di impulso a monte o valle di V2, valvole e blocchi">
             <!-- Sfondo griglia tecnica -->
-            <rect width="1140" height="650" fill="#0f172a" rx="10"/>
+            <rect width="1200" height="760" fill="#0b1120" rx="10"/>
 
             <!-- Intestazioni Zone -->
-            <text x="25" y="30" class="svg-zone-label">INGRESSO MONTE (Pu)</text>
-            <text x="380" y="30" class="svg-zone-label">TRENO DI SICUREZZA E REGOLAZIONE (BLOCCO + MONITOR + REGOLATORE)</text>
-            <text x="920" y="30" class="svg-zone-label">COLLETTORE VALLE (Pd)</text>
-
-            <!-- Collettore Monte -->
-            <path d="M 20 320 L 88 320" class="pipe-main pipe-hp-stroke"/>
-            <path d="M 88 180 L 88 485" class="pipe-main pipe-hp-stroke"/>
-
-            <!-- Manometro Monte -->
-            <g transform="translate(52, 250)">
-              <line x1="0" y1="24" x2="0" y2="70" stroke="#94a3b8" stroke-width="2"/>
-              <circle cx="0" cy="0" r="23" class="gauge-face"/>
-              <text x="0" y="-4" class="gauge-title">Pu</text>
-              <text x="0" y="10" id="svg-gauge-pu" class="gauge-reading">24.0</text>
+            <g id="svg-zone-headers">
+              <text x="24" y="28" class="svg-zone-label">INGRESSO MONTE (Pu)</text>
+              <text x="410" y="28" class="svg-zone-label">TRENO DI SICUREZZA E REGOLAZIONE (BLOCCO + MONITOR + REGOLATORE)</text>
+              <text x="985" y="28" class="svg-zone-label">COLLETTORE VALLE (Pd)</text>
             </g>
 
-            <!-- ==================== LINEA 1 (PRINCIPALE - ALTO) ==================== -->
+            <!-- Collettore Monte -->
+            <g id="svg-upstream-manifold">
+              <path d="M 18 380 L 86 380" class="pipe-main pipe-hp-stroke"/>
+              <path id="pipe-up-vertical" d="M 86 235 L 86 575" class="pipe-main pipe-hp-stroke"/>
+
+              <!-- Manometro Monte -->
+              <g transform="translate(50, 305)">
+                <line x1="0" y1="28" x2="0" y2="75" stroke="#94a3b8" stroke-width="2.5"/>
+                <circle cx="0" cy="0" r="27" class="gauge-face"/>
+                <text x="0" y="-5" class="gauge-title">MONTE Pu</text>
+                <text x="0" y="11" id="svg-gauge-pu" class="gauge-reading">24.0</text>
+              </g>
+            </g>
+
+            <!-- ==================== LINEA 1 (PRINCIPALE - ALTO: y = 44 .. 354) ==================== -->
             <g id="svg-line-1">
-              <rect x="108" y="45" width="815" height="250" rx="8" class="line-box" id="box-line-1"/>
-              <text x="124" y="66" class="line-title" id="svg-l1-title">LINEA 1 — PRINCIPALE (REGOLATORE PILOTATO)</text>
-              <text x="908" y="66" text-anchor="end" class="line-status-badge" id="svg-l1-badge">IN SERVIZIO</text>
+              <!-- Contenitore Linea 1 -->
+              <rect x="108" y="44" width="872" height="310" rx="10" class="line-box" id="box-line-1"/>
+              <!-- Fascia Intestazione Linea 1 (separata dai tubi d'impulso!) -->
+              <rect x="108" y="44" width="872" height="34" rx="10" fill="#162033"/>
+              <line x1="108" y1="78" x2="980" y2="78" stroke="#334155" stroke-width="1"/>
+              <text x="126" y="66" class="line-title" id="svg-l1-title">LINEA 1 — PRINCIPALE (REGOLATORE PILOTATO FAIL-CLOSE)</text>
+              <text x="962" y="66" text-anchor="end" class="line-status-badge" id="svg-l1-badge">IN EROGAZIONE ATTIVA</text>
 
-              <!-- Tubazioni Principali Linea 1 -->
-              <path id="pipe-l1-in" d="M 88 180 L 175 180" class="pipe-segment pipe-hp-stroke"/>
-              <path id="pipe-l1-mid" d="M 215 180 L 780 180" class="pipe-segment pipe-mp-stroke"/>
-              <path id="pipe-l1-out" d="M 820 180 L 970 180" class="pipe-segment pipe-mp-stroke"/>
+              <!-- Tubazioni Principali Linea 1 (y = 235) -->
+              <path id="pipe-l1-in" d="M 86 235 L 180 235" class="pipe-segment pipe-hp-stroke"/>
+              <path id="pipe-l1-mid" d="M 220 235 L 826 235" class="pipe-segment pipe-mp-stroke"/>
+              <path id="pipe-l1-out" d="M 866 235 L 1020 235" class="pipe-segment pipe-mp-stroke"/>
 
-              <!-- Circuito Alimentazione Piloti da Monte (visibile nei regolatori pilotati) -->
+              <!-- Tracciati Prese d'Impulso L1 (su 3 livelli ben distanziati: y=98, y=122, y=146) -->
+              <!-- Livello 1 (y=98): Impulso Blocco SB-L1 -->
+              <path id="imp-blk-l1" d="M 320 190 L 320 98 L 732 98 L 732 235" class="impulse-line"/>
+              <circle cx="732" cy="235" r="4" fill="#94a3b8"/>
+
+              <!-- Livello 2 (y=122): Impulso Monitor MON-L1 -->
+              <path id="imp-mon-l1" d="M 475 186 L 475 122 L 752 122 L 752 235" class="impulse-line"/>
+              <circle cx="752" cy="235" r="4" fill="#94a3b8"/>
+
+              <!-- Livello 3 (y=146): Impulso Regolatore REG-L1 (dinamico: TRONCO x=772 vs VALLE V2 x=915) -->
+              <path id="imp-reg-l1" d="M 630 186 L 630 146 L 772 146 L 772 235" class="impulse-line"/>
+              <circle cx="772" cy="235" r="5" id="tap-dot-reg-l1" fill="#38bdf8" stroke="#0b1120" stroke-width="1.5"/>
+
+              <!-- Livello 4 (y=172): Circuito Alimentazione Piloti da Monte (solo Regolatori Pilotati) -->
               <g id="svg-pilot-supply-l1">
-                <path d="M 255 180 L 255 132 L 595 132" class="pilot-supply-line"/>
-                <line x1="455" y1="132" x2="455" y2="148" class="pilot-supply-line"/>
-                <line x1="595" y1="132" x2="595" y2="148" class="pilot-supply-line"/>
-                <!-- Rubinetto Alimentazione Pilota Monitor L1 -->
-                <g class="svg-interactive" id="svg-btn-palim-mon-l1" transform="translate(422, 132)">
-                  <circle cx="0" cy="0" r="7" id="dot-palim-mon-l1" class="cock-open"/>
-                  <text x="0" y="-10" class="cock-label">Alim.Mon</text>
+                <path d="M 255 235 L 255 172 L 605 172" class="pilot-supply-line"/>
+                <line x1="450" y1="172" x2="450" y2="192" class="pilot-supply-line"/>
+                <line x1="605" y1="172" x2="605" y2="192" class="pilot-supply-line"/>
+                <circle cx="255" cy="235" r="4" fill="#ef4444"/>
+
+                <!-- Rubinetto Alimentazione Pilota Monitor L1 (con pill opaca) -->
+                <g class="svg-interactive" id="svg-btn-palim-mon-l1" transform="translate(405, 172)">
+                  <rect x="-44" y="-11" width="88" height="22" rx="11" class="svg-pill-bg"/>
+                  <circle cx="-31" cy="0" r="6.5" id="dot-palim-mon-l1" class="cock-open"/>
+                  <text x="6" y="3.5" class="cock-pill-text" id="lbl-palim-mon-l1">Alim.Mon: ON</text>
                 </g>
-                <!-- Rubinetto Alimentazione Pilota Regolatore L1 -->
-                <g class="svg-interactive" id="svg-btn-palim-reg-l1" transform="translate(555, 132)">
-                  <circle cx="0" cy="0" r="7" id="dot-palim-reg-l1" class="cock-open"/>
-                  <text x="0" y="-10" class="cock-label" id="lbl-palim-reg-l1">Alim.Pilota</text>
+
+                <!-- Rubinetto Alimentazione Pilota Regolatore L1 (con pill opaca) -->
+                <g class="svg-interactive" id="svg-btn-palim-reg-l1" transform="translate(555, 172)">
+                  <rect x="-46" y="-11" width="92" height="22" rx="11" class="svg-pill-bg"/>
+                  <circle cx="-33" cy="0" r="6.5" id="dot-palim-reg-l1" class="cock-open"/>
+                  <text x="6" y="3.5" class="cock-pill-text" id="lbl-palim-reg-l1">Alim.Pil: ON</text>
                 </g>
               </g>
 
-              <!-- Prese d'impulso L1: Blocco, Monitor, Regolatore -->
-              <!-- Impulso Blocco SB-L1 (a monte di V2) -->
-              <path id="imp-blk-l1" d="M 315 140 L 315 82 L 710 82 L 710 180" class="impulse-line"/>
-              <!-- Impulso Monitor MON-L1 -->
-              <path id="imp-mon-l1" d="M 455 136 L 455 96 L 726 96 L 726 180" class="impulse-line"/>
-              <!-- Impulso Regolatore REG-L1 (dinamico: può pescare a MONTE di V2 [x=742] o a VALLE di V2 [x=855]) -->
-              <path id="imp-reg-l1" d="M 595 136 L 595 110 L 742 110 L 742 180" class="impulse-line"/>
+              <!-- Rubinetti sulle Prese d'Impulso L1 (con pill opache ad alto contrasto che non si sovrappongono mai alle linee) -->
+              <!-- Rubinetto 3 vie Impulso Blocco L1 (y=98) -->
+              <g class="svg-interactive" id="svg-btn-rblk-l1" transform="translate(395, 98)">
+                <rect x="-56" y="-11" width="112" height="22" rx="11" class="svg-pill-bg"/>
+                <circle cx="-42" cy="0" r="6.5" id="dot-rblk-l1" class="cock-open"/>
+                <text x="6" y="3.5" class="cock-pill-text" id="lbl-rblk-l1">Imp.Blk: LINEA</text>
+              </g>
 
-              <!-- Indicatore Punto di Presa Impulso Regolatore L1 -->
-              <circle cx="742" cy="180" r="4.5" id="tap-dot-reg-l1" fill="#38bdf8" stroke="#0f172a" stroke-width="1.5"/>
+              <!-- Rubinetto Impulso Monitor L1 (y=122) -->
+              <g class="svg-interactive" id="svg-btn-rmon-l1" transform="translate(550, 122)">
+                <rect x="-52" y="-11" width="104" height="22" rx="11" class="svg-pill-bg"/>
+                <circle cx="-38" cy="0" r="6.5" id="dot-rmon-l1" class="cock-open"/>
+                <text x="6" y="3.5" class="cock-pill-text" id="lbl-rmon-l1">Imp.Mon: ON</text>
+              </g>
+
+              <!-- Rubinetto Impulso Regolatore L1 (y=146) -->
+              <g class="svg-interactive" id="svg-btn-rreg-l1" transform="translate(702, 146)">
+                <rect x="-62" y="-11" width="124" height="22" rx="11" class="svg-pill-bg"/>
+                <circle cx="-48" cy="0" r="6.5" id="dot-rreg-l1" class="cock-open"/>
+                <text x="6" y="3.5" class="cock-pill-text" id="lbl-rreg-l1">Imp.Reg: VALLE V2</text>
+              </g>
 
               <!-- By-pass V1-L1 -->
-              <path id="pipe-bp-l1" d="M 155 180 L 155 242 L 235 242 L 235 180" class="bypass-line"/>
-              <g class="svg-interactive" id="svg-btn-bp-l1" transform="translate(195, 242)">
-                <rect x="-26" y="-14" width="52" height="28" rx="5" class="comp-hit"/>
-                <polygon points="-10,-7 10,7 10,-7 -10,7" id="shape-bp-l1" class="valve-closed"/>
-                <text x="0" y="21" class="comp-sublabel">BP-L1</text>
+              <path id="pipe-bp-l1" d="M 160 235 L 160 305 L 240 305 L 240 235" class="bypass-line"/>
+              <g class="svg-interactive" id="svg-btn-bp-l1" transform="translate(200, 305)">
+                <rect x="-32" y="-16" width="64" height="42" rx="6" class="comp-hit"/>
+                <polygon points="-11,-7 11,7 11,-7 -11,7" id="shape-bp-l1" class="valve-closed"/>
+                <text x="0" y="20" class="comp-sublabel">BP-L1</text>
               </g>
 
               <!-- Valvola Monte V1-L1 -->
-              <g class="svg-interactive" id="svg-btn-v1-l1" transform="translate(195, 180)">
-                <rect x="-26" y="-26" width="52" height="52" rx="6" class="comp-hit"/>
-                <polygon points="-16,-12 16,12 16,-12 -16,12" id="shape-v1-l1" class="valve-open"/>
+              <g class="svg-interactive" id="svg-btn-v1-l1" transform="translate(200, 235)">
+                <rect x="-30" y="-34" width="60" height="62" rx="6" class="comp-hit"/>
+                <polygon points="-17,-12 17,12 17,-12 -17,12" id="shape-v1-l1" class="valve-open"/>
                 <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
-                <text x="0" y="-18" class="comp-label">V1-L1</text>
+                <text x="0" y="-19" class="comp-label">V1-L1</text>
               </g>
 
               <!-- Valvola di Blocco SB-L1 -->
-              <g class="svg-interactive" id="svg-btn-sb-l1" transform="translate(315, 180)">
-                <rect x="-38" y="-54" width="76" height="96" rx="6" class="comp-hit"/>
-                <rect x="-22" y="-44" width="44" height="22" rx="4" id="head-sb-l1" class="slam-armed"/>
+              <g class="svg-interactive" id="svg-btn-sb-l1" transform="translate(320, 235)">
+                <rect x="-46" y="-52" width="92" height="122" rx="8" class="comp-hit"/>
+                <rect x="-24" y="-44" width="48" height="22" rx="4" id="head-sb-l1" class="slam-armed"/>
                 <line x1="0" y1="-22" x2="0" y2="0" stroke="#e2e8f0" stroke-width="3"/>
                 <rect x="-20" y="-14" width="40" height="28" rx="4" class="reg-body"/>
                 <text x="0" y="-29" class="comp-badge-text" id="txt-sb-l1">ARMATO</text>
-                <text x="0" y="28" class="comp-label">BLOCCO SB-L1</text>
-                <text x="0" y="41" class="comp-sublabel" id="sub-sb-l1">Max 1.90 | Min 0.80</text>
-              </g>
-
-              <!-- Rubinetto 3 vie presa impulso Blocco L1 -->
-              <g class="svg-interactive" id="svg-btn-rblk-l1" transform="translate(368, 82)">
-                <circle cx="0" cy="0" r="8" id="dot-rblk-l1" class="cock-open"/>
-                <text x="0" y="-11" class="cock-label" id="lbl-rblk-l1">Imp.Blk: LINEA</text>
+                <text x="0" y="32" class="comp-label">BLOCCO SB-L1</text>
+                <text x="0" y="47" class="comp-sublabel" id="sub-sb-l1">Max 1.90 | Min 0.80</text>
               </g>
 
               <!-- Regolatore MONITOR L1 -->
-              <g class="svg-interactive" id="svg-btn-mon-l1" transform="translate(455, 180)">
-                <rect x="-38" y="-54" width="76" height="104" rx="6" class="comp-hit"/>
-                <ellipse cx="0" cy="-34" rx="24" ry="11" class="pilot-dome"/>
-                <line x1="0" y1="-23" x2="0" y2="-14" stroke="#94a3b8" stroke-width="3"/>
+              <g class="svg-interactive" id="svg-btn-mon-l1" transform="translate(475, 235)">
+                <rect x="-48" y="-52" width="96" height="124" rx="8" class="comp-hit"/>
+                <ellipse cx="0" cy="-35" rx="24" ry="11" class="pilot-dome"/>
+                <line x1="0" y1="-24" x2="0" y2="-14" stroke="#94a3b8" stroke-width="3"/>
                 <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-mon-l1" class="reg-monitor"/>
-                <text x="0" y="28" class="comp-label">MONITOR L1</text>
-                <text x="0" y="40" class="comp-sublabel" id="sub-mon-l1">Set: 1.65 bar</text>
-                <text x="0" y="52" class="comp-micro" id="pmot-mon-l1">Pmot: 0.00 bar</text>
-              </g>
-
-              <!-- Rubinetto presa impulso Monitor L1 -->
-              <g class="svg-interactive" id="svg-btn-rmon-l1" transform="translate(508, 96)">
-                <circle cx="0" cy="0" r="7.5" id="dot-rmon-l1" class="cock-open"/>
-                <text x="0" y="-10" class="cock-label" id="lbl-rmon-l1">Imp.Mon: ON</text>
+                <text x="0" y="32" class="comp-label">MONITOR L1</text>
+                <text x="0" y="47" class="comp-sublabel" id="sub-mon-l1">Set: 1.65 bar</text>
+                <text x="0" y="61" class="comp-micro" id="pmot-mon-l1">Pmot: 3.20 bar</text>
               </g>
 
               <!-- Regolatore PRINCIPALE L1 -->
-              <g class="svg-interactive" id="svg-btn-reg-l1" transform="translate(595, 180)">
-                <rect x="-40" y="-54" width="80" height="104" rx="6" class="comp-hit"/>
-                <ellipse cx="0" cy="-34" rx="24" ry="11" class="pilot-dome-active"/>
-                <line x1="0" y1="-23" x2="0" y2="-14" stroke="#38bdf8" stroke-width="3"/>
+              <g class="svg-interactive" id="svg-btn-reg-l1" transform="translate(630, 235)">
+                <rect x="-50" y="-52" width="100" height="124" rx="8" class="comp-hit"/>
+                <ellipse cx="0" cy="-35" rx="24" ry="11" class="pilot-dome-active"/>
+                <line x1="0" y1="-24" x2="0" y2="-14" stroke="#38bdf8" stroke-width="3"/>
                 <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-reg-l1" class="reg-active"/>
-                <text x="0" y="28" class="comp-label">REG. PRINC. L1</text>
-                <text x="0" y="40" class="comp-sublabel" id="sub-reg-l1">Set: 1.50 bar</text>
-                <text x="0" y="52" class="comp-micro" id="pmot-reg-l1">Pmot: 2.10 bar</text>
-              </g>
-
-              <!-- Rubinetto isolamento presa impulso Regolatore L1 -->
-              <g class="svg-interactive" id="svg-btn-rreg-l1" transform="translate(658, 110)">
-                <circle cx="0" cy="0" r="8" id="dot-rreg-l1" class="cock-open"/>
-                <text x="0" y="-11" class="cock-label" id="lbl-rreg-l1">Imp.Reg: TRONCO</text>
-              </g>
-
-              <!-- Manometro di Tronco Linea 1 + Candela di Sfiato SF-L1 -->
-              <g transform="translate(758, 245)">
-                <line x1="0" y1="-65" x2="0" y2="-22" stroke="#94a3b8" stroke-width="2"/>
-                <circle cx="0" cy="0" r="22" class="gauge-face"/>
-                <text x="0" y="-4" class="gauge-title">P tronco L1</text>
-                <text x="0" y="10" id="svg-gauge-l1" class="gauge-reading">1.50</text>
+                <text x="0" y="32" class="comp-label">REG. PRINC. L1</text>
+                <text x="0" y="47" class="comp-sublabel" id="sub-reg-l1">Set: 1.50 bar</text>
+                <text x="0" y="61" class="comp-micro" id="pmot-reg-l1">Pmot: 2.15 bar</text>
               </g>
 
               <!-- Candela di sfiato SF-L1 -->
-              <g class="svg-interactive" id="svg-btn-sf-l1" transform="translate(758, 180)">
-                <line x1="0" y1="0" x2="0" y2="-38" stroke="#fbbf24" stroke-width="2.5"/>
-                <rect x="-24" y="-56" width="48" height="34" rx="5" class="comp-hit"/>
-                <circle cx="0" cy="-38" r="9" id="dot-sf-l1" class="cock-closed"/>
-                <text x="0" y="-52" class="cock-label" id="lbl-sf-l1">Sfiato SF-L1</text>
+              <g class="svg-interactive" id="svg-btn-sf-l1" transform="translate(798, 235)">
+                <line x1="0" y1="0" x2="0" y2="-42" stroke="#fbbf24" stroke-width="2.5"/>
+                <rect x="-42" y="-68" width="84" height="44" rx="6" class="comp-hit"/>
+                <circle cx="0" cy="-42" r="8.5" id="dot-sf-l1" class="cock-closed"/>
+                <rect x="-40" y="-66" width="80" height="16" rx="4" fill="#0b1120"/>
+                <text x="0" y="-55" class="cock-pill-text" id="lbl-sf-l1">Sfiato SF-L1</text>
+              </g>
+
+              <!-- Manometro di Tronco Linea 1 (Ingrandito r=26 con etichetta esterna nitida) -->
+              <g transform="translate(798, 302)">
+                <line x1="0" y1="-67" x2="0" y2="-26" stroke="#94a3b8" stroke-width="2.5"/>
+                <circle cx="0" cy="0" r="26" class="gauge-face"/>
+                <text x="0" y="-5" class="gauge-title">TRONCO L1</text>
+                <text x="0" y="11" id="svg-gauge-l1" class="gauge-reading">1.50</text>
               </g>
 
               <!-- Valvola Valle V2-L1 -->
-              <g class="svg-interactive" id="svg-btn-v2-l1" transform="translate(800, 180)">
-                <rect x="-26" y="-26" width="52" height="52" rx="6" class="comp-hit"/>
-                <polygon points="-16,-12 16,12 16,-12 -16,12" id="shape-v2-l1" class="valve-open"/>
+              <g class="svg-interactive" id="svg-btn-v2-l1" transform="translate(846, 235)">
+                <rect x="-30" y="-34" width="60" height="62" rx="6" class="comp-hit"/>
+                <polygon points="-17,-12 17,12 17,-12 -17,12" id="shape-v2-l1" class="valve-open"/>
                 <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
-                <text x="0" y="-18" class="comp-label">V2-L1</text>
+                <text x="0" y="-19" class="comp-label">V2-L1</text>
               </g>
             </g>
 
-            <!-- ==================== LINEA 2 (SECONDA LINEA / RISERVA - BASSO) ==================== -->
+            <!-- ==================== LINEA 2 (SECONDA LINEA / RISERVA - BASSO: y = 384 .. 694) ==================== -->
             <g id="svg-line-2">
-              <rect x="108" y="350" width="815" height="250" rx="8" class="line-box" id="box-line-2"/>
-              <text x="124" y="371" class="line-title" id="svg-l2-title">LINEA 2 — SECONDA LINEA (EMERGENZA / RISERVA)</text>
-              <text x="908" y="371" text-anchor="end" class="line-status-badge badge-standby" id="svg-l2-badge">STAND-BY AUTOMATICO</text>
+              <rect x="108" y="384" width="872" height="310" rx="10" class="line-box" id="box-line-2"/>
+              <rect x="108" y="384" width="872" height="34" rx="10" fill="#162033"/>
+              <line x1="108" y1="418" x2="980" y2="418" stroke="#334155" stroke-width="1"/>
+              <text x="126" y="406" class="line-title" id="svg-l2-title">LINEA 2 — SECONDA LINEA DI RISERVA (REGOLATORE PILOTATO FAIL-CLOSE)</text>
+              <text x="962" y="406" text-anchor="end" class="line-status-badge badge-standby" id="svg-l2-badge">STAND-BY AUTOMATICO</text>
 
-              <!-- Tubazioni Linea 2 -->
-              <path id="pipe-l2-in" d="M 88 485 L 175 485" class="pipe-segment pipe-hp-stroke"/>
-              <path id="pipe-l2-mid" d="M 215 485 L 780 485" class="pipe-segment pipe-mp-stroke"/>
-              <path id="pipe-l2-out" d="M 820 485 L 970 485" class="pipe-segment pipe-mp-stroke"/>
+              <!-- Tubazioni Principali Linea 2 (y = 575) -->
+              <path id="pipe-l2-in" d="M 86 575 L 180 575" class="pipe-segment pipe-hp-stroke"/>
+              <path id="pipe-l2-mid" d="M 220 575 L 826 575" class="pipe-segment pipe-mp-stroke"/>
+              <path id="pipe-l2-out" d="M 866 575 L 1020 575" class="pipe-segment pipe-mp-stroke"/>
 
-              <!-- Circuito Alimentazione Piloti da Monte L2 -->
+              <!-- Tracciati Prese d'Impulso L2 (y=438, y=462, y=486) -->
+              <path id="imp-blk-l2" d="M 320 530 L 320 438 L 732 438 L 732 575" class="impulse-line"/>
+              <circle cx="732" cy="575" r="4" fill="#94a3b8"/>
+
+              <path id="imp-mon-l2" d="M 475 526 L 475 462 L 752 462 L 752 575" class="impulse-line"/>
+              <circle cx="752" cy="575" r="4" fill="#94a3b8"/>
+
+              <path id="imp-reg-l2" d="M 630 526 L 630 486 L 772 486 L 772 575" class="impulse-line"/>
+              <circle cx="772" cy="575" r="5" id="tap-dot-reg-l2" fill="#38bdf8" stroke="#0b1120" stroke-width="1.5"/>
+
+              <!-- Livello 4 (y=512): Circuito Alimentazione Piloti da Monte L2 -->
               <g id="svg-pilot-supply-l2">
-                <path d="M 255 485 L 255 437 L 595 437" class="pilot-supply-line"/>
-                <line x1="455" y1="437" x2="455" y2="453" class="pilot-supply-line"/>
-                <line x1="595" y1="437" x2="595" y2="453" class="pilot-supply-line"/>
-                <g class="svg-interactive" id="svg-btn-palim-mon-l2" transform="translate(422, 437)">
-                  <circle cx="0" cy="0" r="7" id="dot-palim-mon-l2" class="cock-open"/>
-                  <text x="0" y="-10" class="cock-label">Alim.Mon</text>
+                <path d="M 255 575 L 255 512 L 605 512" class="pilot-supply-line"/>
+                <line x1="450" y1="512" x2="450" y2="532" class="pilot-supply-line"/>
+                <line x1="605" y1="512" x2="605" y2="532" class="pilot-supply-line"/>
+                <circle cx="255" cy="575" r="4" fill="#ef4444"/>
+
+                <g class="svg-interactive" id="svg-btn-palim-mon-l2" transform="translate(405, 512)">
+                  <rect x="-44" y="-11" width="88" height="22" rx="11" class="svg-pill-bg"/>
+                  <circle cx="-31" cy="0" r="6.5" id="dot-palim-mon-l2" class="cock-open"/>
+                  <text x="6" y="3.5" class="cock-pill-text" id="lbl-palim-mon-l2">Alim.Mon: ON</text>
                 </g>
-                <g class="svg-interactive" id="svg-btn-palim-reg-l2" transform="translate(555, 437)">
-                  <circle cx="0" cy="0" r="7" id="dot-palim-reg-l2" class="cock-open"/>
-                  <text x="0" y="-10" class="cock-label" id="lbl-palim-reg-l2">Alim.Pilota</text>
+
+                <g class="svg-interactive" id="svg-btn-palim-reg-l2" transform="translate(555, 512)">
+                  <rect x="-46" y="-11" width="92" height="22" rx="11" class="svg-pill-bg"/>
+                  <circle cx="-33" cy="0" r="6.5" id="dot-palim-reg-l2" class="cock-open"/>
+                  <text x="6" y="3.5" class="cock-pill-text" id="lbl-palim-reg-l2">Alim.Pil: ON</text>
                 </g>
               </g>
 
-              <!-- Prese d'impulso L2 -->
-              <path id="imp-blk-l2" d="M 315 445 L 315 387 L 710 387 L 710 485" class="impulse-line"/>
-              <path id="imp-mon-l2" d="M 455 441 L 455 401 L 726 401 L 726 485" class="impulse-line"/>
-              <path id="imp-reg-l2" d="M 595 441 L 595 415 L 742 415 L 742 485" class="impulse-line"/>
-              <circle cx="742" cy="485" r="4.5" id="tap-dot-reg-l2" fill="#38bdf8" stroke="#0f172a" stroke-width="1.5"/>
+              <!-- Rubinetti Prese d'Impulso L2 con pill opache -->
+              <g class="svg-interactive" id="svg-btn-rblk-l2" transform="translate(395, 438)">
+                <rect x="-56" y="-11" width="112" height="22" rx="11" class="svg-pill-bg"/>
+                <circle cx="-42" cy="0" r="6.5" id="dot-rblk-l2" class="cock-open"/>
+                <text x="6" y="3.5" class="cock-pill-text" id="lbl-rblk-l2">Imp.Blk: LINEA</text>
+              </g>
+
+              <g class="svg-interactive" id="svg-btn-rmon-l2" transform="translate(550, 462)">
+                <rect x="-52" y="-11" width="104" height="22" rx="11" class="svg-pill-bg"/>
+                <circle cx="-38" cy="0" r="6.5" id="dot-rmon-l2" class="cock-open"/>
+                <text x="6" y="3.5" class="cock-pill-text" id="lbl-rmon-l2">Imp.Mon: ON</text>
+              </g>
+
+              <g class="svg-interactive" id="svg-btn-rreg-l2" transform="translate(702, 486)">
+                <rect x="-62" y="-11" width="124" height="22" rx="11" class="svg-pill-bg"/>
+                <circle cx="-48" cy="0" r="6.5" id="dot-rreg-l2" class="cock-open"/>
+                <text x="6" y="3.5" class="cock-pill-text" id="lbl-rreg-l2">Imp.Reg: VALLE V2</text>
+              </g>
 
               <!-- By-pass V1-L2 -->
-              <path id="pipe-bp-l2" d="M 155 485 L 155 547 L 235 547 L 235 485" class="bypass-line"/>
-              <g class="svg-interactive" id="svg-btn-bp-l2" transform="translate(195, 547)">
-                <rect x="-26" y="-14" width="52" height="28" rx="5" class="comp-hit"/>
-                <polygon points="-10,-7 10,7 10,-7 -10,7" id="shape-bp-l2" class="valve-closed"/>
-                <text x="0" y="21" class="comp-sublabel">BP-L2</text>
+              <path id="pipe-bp-l2" d="M 160 575 L 160 645 L 240 645 L 240 575" class="bypass-line"/>
+              <g class="svg-interactive" id="svg-btn-bp-l2" transform="translate(200, 645)">
+                <rect x="-32" y="-16" width="64" height="42" rx="6" class="comp-hit"/>
+                <polygon points="-11,-7 11,7 11,-7 -11,7" id="shape-bp-l2" class="valve-closed"/>
+                <text x="0" y="20" class="comp-sublabel">BP-L2</text>
               </g>
 
               <!-- Valvola Monte V1-L2 -->
-              <g class="svg-interactive" id="svg-btn-v1-l2" transform="translate(195, 485)">
-                <rect x="-26" y="-26" width="52" height="52" rx="6" class="comp-hit"/>
-                <polygon points="-16,-12 16,12 16,-12 -16,12" id="shape-v1-l2" class="valve-open"/>
+              <g class="svg-interactive" id="svg-btn-v1-l2" transform="translate(200, 575)">
+                <rect x="-30" y="-34" width="60" height="62" rx="6" class="comp-hit"/>
+                <polygon points="-17,-12 17,12 17,-12 -17,12" id="shape-v1-l2" class="valve-open"/>
                 <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
-                <text x="0" y="-18" class="comp-label">V1-L2</text>
+                <text x="0" y="-19" class="comp-label">V1-L2</text>
               </g>
 
               <!-- Valvola di Blocco SB-L2 -->
-              <g class="svg-interactive" id="svg-btn-sb-l2" transform="translate(315, 485)">
-                <rect x="-38" y="-54" width="76" height="96" rx="6" class="comp-hit"/>
-                <rect x="-22" y="-44" width="44" height="22" rx="4" id="head-sb-l2" class="slam-armed"/>
+              <g class="svg-interactive" id="svg-btn-sb-l2" transform="translate(320, 575)">
+                <rect x="-46" y="-52" width="92" height="122" rx="8" class="comp-hit"/>
+                <rect x="-24" y="-44" width="48" height="22" rx="4" id="head-sb-l2" class="slam-armed"/>
                 <line x1="0" y1="-22" x2="0" y2="0" stroke="#e2e8f0" stroke-width="3"/>
                 <rect x="-20" y="-14" width="40" height="28" rx="4" class="reg-body"/>
                 <text x="0" y="-29" class="comp-badge-text" id="txt-sb-l2">ARMATO</text>
-                <text x="0" y="28" class="comp-label">BLOCCO SB-L2</text>
-                <text x="0" y="41" class="comp-sublabel" id="sub-sb-l2">Max 1.90 | Min 0.80</text>
-              </g>
-
-              <!-- Rubinetto 3 vie presa impulso Blocco L2 -->
-              <g class="svg-interactive" id="svg-btn-rblk-l2" transform="translate(368, 387)">
-                <circle cx="0" cy="0" r="8" id="dot-rblk-l2" class="cock-open"/>
-                <text x="0" y="-11" class="cock-label" id="lbl-rblk-l2">Imp.Blk: LINEA</text>
+                <text x="0" y="32" class="comp-label">BLOCCO SB-L2</text>
+                <text x="0" y="47" class="comp-sublabel" id="sub-sb-l2">Max 1.90 | Min 0.80</text>
               </g>
 
               <!-- Regolatore MONITOR L2 -->
-              <g class="svg-interactive" id="svg-btn-mon-l2" transform="translate(455, 485)">
-                <rect x="-38" y="-54" width="76" height="104" rx="6" class="comp-hit"/>
-                <ellipse cx="0" cy="-34" rx="24" ry="11" class="pilot-dome"/>
-                <line x1="0" y1="-23" x2="0" y2="-14" stroke="#94a3b8" stroke-width="3"/>
+              <g class="svg-interactive" id="svg-btn-mon-l2" transform="translate(475, 575)">
+                <rect x="-48" y="-52" width="96" height="124" rx="8" class="comp-hit"/>
+                <ellipse cx="0" cy="-35" rx="24" ry="11" class="pilot-dome"/>
+                <line x1="0" y1="-24" x2="0" y2="-14" stroke="#94a3b8" stroke-width="3"/>
                 <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-mon-l2" class="reg-monitor"/>
-                <text x="0" y="28" class="comp-label">MONITOR L2</text>
-                <text x="0" y="40" class="comp-sublabel" id="sub-mon-l2">Set: 1.65 bar</text>
-                <text x="0" y="52" class="comp-micro" id="pmot-mon-l2">Pmot: 0.00 bar</text>
-              </g>
-
-              <g class="svg-interactive" id="svg-btn-rmon-l2" transform="translate(508, 401)">
-                <circle cx="0" cy="0" r="7.5" id="dot-rmon-l2" class="cock-open"/>
-                <text x="0" y="-10" class="cock-label" id="lbl-rmon-l2">Imp.Mon: ON</text>
+                <text x="0" y="32" class="comp-label">MONITOR L2</text>
+                <text x="0" y="47" class="comp-sublabel" id="sub-mon-l2">Set: 1.65 bar</text>
+                <text x="0" y="61" class="comp-micro" id="pmot-mon-l2">Pmot: 3.20 bar</text>
               </g>
 
               <!-- Regolatore PRINCIPALE L2 (Seconda Linea) -->
-              <g class="svg-interactive" id="svg-btn-reg-l2" transform="translate(595, 485)">
-                <rect x="-40" y="-54" width="80" height="104" rx="6" class="comp-hit"/>
-                <ellipse cx="0" cy="-34" rx="24" ry="11" class="pilot-dome-active"/>
-                <line x1="0" y1="-23" x2="0" y2="-14" stroke="#38bdf8" stroke-width="3"/>
+              <g class="svg-interactive" id="svg-btn-reg-l2" transform="translate(630, 575)">
+                <rect x="-50" y="-52" width="100" height="124" rx="8" class="comp-hit"/>
+                <ellipse cx="0" cy="-35" rx="24" ry="11" class="pilot-dome-active"/>
+                <line x1="0" y1="-24" x2="0" y2="-14" stroke="#38bdf8" stroke-width="3"/>
                 <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-reg-l2" class="reg-standby"/>
-                <text x="0" y="28" class="comp-label">REG. 2ª LINEA</text>
-                <text x="0" y="40" class="comp-sublabel" id="sub-reg-l2">Set: 1.35 bar</text>
-                <text x="0" y="52" class="comp-micro" id="pmot-reg-l2">Pmot: 1.50 bar</text>
-              </g>
-
-              <!-- Rubinetto isolamento presa impulso Regolatore L2 -->
-              <g class="svg-interactive" id="svg-btn-rreg-l2" transform="translate(658, 415)">
-                <circle cx="0" cy="0" r="8" id="dot-rreg-l2" class="cock-open"/>
-                <text x="0" y="-11" class="cock-label" id="lbl-rreg-l2">Imp.Reg: TRONCO</text>
-              </g>
-
-              <!-- Manometro di Tronco Linea 2 + Candela di Sfiato SF-L2 -->
-              <g transform="translate(758, 550)">
-                <line x1="0" y1="-65" x2="0" y2="-22" stroke="#94a3b8" stroke-width="2"/>
-                <circle cx="0" cy="0" r="22" class="gauge-face"/>
-                <text x="0" y="-4" class="gauge-title">P tronco L2</text>
-                <text x="0" y="10" id="svg-gauge-l2" class="gauge-reading">1.50</text>
+                <text x="0" y="32" class="comp-label">REG. 2ª LINEA</text>
+                <text x="0" y="47" class="comp-sublabel" id="sub-reg-l2">Set: 1.35 bar</text>
+                <text x="0" y="61" class="comp-micro" id="pmot-reg-l2">Pmot: 1.50 bar</text>
               </g>
 
               <!-- Candela di sfiato SF-L2 -->
-              <g class="svg-interactive" id="svg-btn-sf-l2" transform="translate(758, 485)">
-                <line x1="0" y1="0" x2="0" y2="-38" stroke="#fbbf24" stroke-width="2.5"/>
-                <rect x="-24" y="-56" width="48" height="34" rx="5" class="comp-hit"/>
-                <circle cx="0" cy="-38" r="9" id="dot-sf-l2" class="cock-closed"/>
-                <text x="0" y="-52" class="cock-label" id="lbl-sf-l2">Sfiato SF-L2</text>
+              <g class="svg-interactive" id="svg-btn-sf-l2" transform="translate(798, 575)">
+                <line x1="0" y1="0" x2="0" y2="-42" stroke="#fbbf24" stroke-width="2.5"/>
+                <rect x="-42" y="-68" width="84" height="44" rx="6" class="comp-hit"/>
+                <circle cx="0" cy="-42" r="8.5" id="dot-sf-l2" class="cock-closed"/>
+                <rect x="-40" y="-66" width="80" height="16" rx="4" fill="#0b1120"/>
+                <text x="0" y="-55" class="cock-pill-text" id="lbl-sf-l2">Sfiato SF-L2</text>
+              </g>
+
+              <!-- Manometro di Tronco Linea 2 -->
+              <g transform="translate(798, 642)">
+                <line x1="0" y1="-67" x2="0" y2="-26" stroke="#94a3b8" stroke-width="2.5"/>
+                <circle cx="0" cy="0" r="26" class="gauge-face"/>
+                <text x="0" y="-5" class="gauge-title">TRONCO L2</text>
+                <text x="0" y="11" id="svg-gauge-l2" class="gauge-reading">1.50</text>
               </g>
 
               <!-- Valvola Valle V2-L2 -->
-              <g class="svg-interactive" id="svg-btn-v2-l2" transform="translate(800, 485)">
-                <rect x="-26" y="-26" width="52" height="52" rx="6" class="comp-hit"/>
-                <polygon points="-16,-12 16,12 16,-12 -16,12" id="shape-v2-l2" class="valve-open"/>
+              <g class="svg-interactive" id="svg-btn-v2-l2" transform="translate(846, 575)">
+                <rect x="-30" y="-34" width="60" height="62" rx="6" class="comp-hit"/>
+                <polygon points="-17,-12 17,12 17,-12 -17,12" id="shape-v2-l2" class="valve-open"/>
                 <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
-                <text x="0" y="-18" class="comp-label">V2-L2</text>
+                <text x="0" y="-19" class="comp-label">V2-L2</text>
               </g>
             </g>
 
             <!-- ==================== COLLETTORE DI VALLE E VALVOLA DI SFIORO ==================== -->
-            <path d="M 970 180 L 970 485" class="pipe-main pipe-mp-stroke" id="pipe-manifold-out"/>
-            <path d="M 970 330 L 1110 330" class="pipe-main pipe-mp-stroke" id="pipe-outlet-main"/>
+            <g id="svg-downstream-manifold">
+              <path d="M 1020 235 L 1020 575" class="pipe-main pipe-mp-stroke" id="pipe-manifold-out"/>
+              <path d="M 1020 405 L 1170 405" class="pipe-main pipe-mp-stroke" id="pipe-outlet-main"/>
 
-            <!-- Valvola di Sfioro (VS) sul collettore di valle -->
-            <g class="svg-interactive" id="svg-btn-vs" transform="translate(1030, 180)">
-              <line x1="-60" y1="0" x2="0" y2="0" stroke="#38bdf8" stroke-width="5"/>
-              <line x1="0" y1="0" x2="0" y2="-45" stroke="#fbbf24" stroke-width="3"/>
-              <rect x="-28" y="-42" width="56" height="58" rx="6" class="comp-hit"/>
-              <polygon points="-14,-18 14,-18 0,4" id="shape-vs" class="relief-closed"/>
-              <text x="0" y="-52" class="comp-label">SFIORO (VS)</text>
-              <text x="0" y="25" class="comp-sublabel" id="sub-vs">Set: 1.75 bar</text>
-            </g>
+              <!-- Valvola di Sfioro (VS) sul collettore di valle -->
+              <g class="svg-interactive" id="svg-btn-vs" transform="translate(1090, 235)">
+                <line x1="-70" y1="0" x2="0" y2="0" stroke="#38bdf8" stroke-width="5"/>
+                <line x1="0" y1="0" x2="0" y2="-45" stroke="#fbbf24" stroke-width="3"/>
+                <rect x="-36" y="-44" width="72" height="68" rx="6" class="comp-hit"/>
+                <polygon points="-15,-18 15,-18 0,5" id="shape-vs" class="relief-closed"/>
+                <text x="0" y="-52" class="comp-label">SFIORO (VS)</text>
+                <text x="0" y="22" class="comp-sublabel" id="sub-vs">Set: 1.75 bar</text>
+              </g>
 
-            <!-- Manometro Collettore Valle (Pd) -->
-            <g transform="translate(1050, 425)">
-              <line x1="0" y1="-95" x2="0" y2="-28" stroke="#94a3b8" stroke-width="2"/>
-              <circle cx="0" cy="0" r="28" class="gauge-face gauge-face-main"/>
-              <text x="0" y="-6" class="gauge-title">Pd VALLE</text>
-              <text x="0" y="12" id="svg-gauge-pd" class="gauge-reading gauge-reading-lg">1.50</text>
+              <!-- Manometro Collettore Valle (Pd) -->
+              <g id="svg-gauge-pd-group" transform="translate(1105, 500)">
+                <line x1="0" y1="-95" x2="0" y2="-30" stroke="#94a3b8" stroke-width="2.5"/>
+                <circle cx="0" cy="0" r="30" class="gauge-face gauge-face-main"/>
+                <text x="0" y="-6" class="gauge-title">Pd VALLE</text>
+                <text x="0" y="12" id="svg-gauge-pd" class="gauge-reading gauge-reading-lg">1.50</text>
+              </g>
             </g>
           </svg>
         </div>
@@ -403,7 +472,7 @@
           <span><i class="dot dot-green"></i> Aperto / In Regolazione</span>
           <span><i class="dot dot-amber"></i> Monitor / Riserva / Test</span>
           <span><i class="dot dot-red"></i> Chiuso / Bloccato</span>
-          <span class="legend-hint">💡 Clicca su Regolatori, Monitor, Rubinetti d'Impulso o d'Alimentazione Pilota per operare</span>
+          <span class="legend-hint">💡 Usa i pulsanti "Focus Solo 1ª / 2ª Linea" o lo Zoom per ingrandire i dettagli</span>
         </div>
       </section>
 

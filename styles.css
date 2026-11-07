@@ -159,8 +159,8 @@ select:focus-visible {
 }
 
 .btn-xs {
-  padding: 0.24rem 0.48rem;
-  font-size: 0.74rem;
+  padding: 0.26rem 0.54rem;
+  font-size: 0.75rem;
 }
 
 .btn-primary {
@@ -312,7 +312,7 @@ select:focus-visible {
   padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.75rem;
 }
 
 .panel-header {
@@ -338,15 +338,15 @@ select:focus-visible {
 .kpi-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .kpi-box {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  padding: 0.32rem 0.65rem;
-  min-width: 108px;
+  padding: 0.32rem 0.6rem;
+  min-width: 102px;
 }
 
 .kpi-highlight {
@@ -355,14 +355,14 @@ select:focus-visible {
 
 .kpi-label {
   display: block;
-  font-size: 0.66rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
 .kpi-value {
   font-family: var(--font-mono);
-  font-size: 0.94rem;
+  font-size: 0.92rem;
   font-weight: 700;
 }
 
@@ -378,12 +378,78 @@ select:focus-visible {
   color: var(--color-danger);
 }
 
+/* Barra Controlli Vista Linea & Zoom */
+.view-controls-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  background: #162033;
+  border: 1px solid #263449;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+}
+
+.view-mode-group,
+.zoom-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.view-bar-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-right: 0.15rem;
+}
+
+.btn-view {
+  background: #0f172a;
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+.btn-view:hover {
+  background: #1e293b;
+  color: #fff;
+}
+
+.btn-view.active {
+  background: #0284c7;
+  color: #fff;
+  border-color: #38bdf8;
+}
+
+.other-line-summary {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid #38bdf8;
+  border-radius: 6px;
+  padding: 0.24rem 0.65rem;
+  font-size: 0.76rem;
+  font-family: var(--font-mono);
+  color: #e2e8f0;
+}
+
+.zoom-readout {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-width: 44px;
+  text-align: center;
+  color: #7dd3fc;
+}
+
 /* SVG Styles */
 .svg-container {
   width: 100%;
-  overflow-x: auto;
+  overflow: auto;
   border-radius: 8px;
   border: 1px solid #1e293b;
+  background: #0b1120;
 }
 
 #pid-svg {
@@ -391,6 +457,7 @@ select:focus-visible {
   height: auto;
   display: block;
   user-select: none;
+  transition: width 0.15s ease;
 }
 
 .svg-zone-label {
@@ -401,21 +468,21 @@ select:focus-visible {
 }
 
 .line-box {
-  fill: rgba(30, 41, 59, 0.38);
+  fill: rgba(30, 41, 59, 0.34);
   stroke: #334155;
   stroke-width: 1.5;
 }
 
 .line-title {
-  fill: #cbd5e1;
-  font-size: 11.5px;
+  fill: #e2e8f0;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 .line-status-badge {
   fill: #10b981;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   font-family: var(--font-mono);
 }
@@ -466,7 +533,7 @@ select:focus-visible {
   fill: none;
   stroke: #f87171;
   stroke-width: 2;
-  stroke-dasharray: 3 2;
+  stroke-dasharray: 4 3;
 }
 
 .impulse-line {
@@ -490,6 +557,33 @@ select:focus-visible {
   stroke-dasharray: 4 3;
 }
 
+/* Pill opache per rubinetti su linee tratteggiate (nessuna sovrapposizione testo-linea!) */
+.svg-pill-bg {
+  fill: #0b1120;
+  stroke: #334155;
+  stroke-width: 1.5;
+  transition: stroke 0.15s ease, fill 0.15s ease;
+}
+
+.svg-interactive:hover .svg-pill-bg {
+  fill: #162033;
+  stroke: #38bdf8;
+}
+
+.svg-interactive.selected-comp .svg-pill-bg {
+  fill: #1e293b;
+  stroke: #38bdf8;
+  stroke-width: 2;
+}
+
+.cock-pill-text {
+  fill: #f1f5f9;
+  font-size: 9.2px;
+  font-weight: 700;
+  text-anchor: middle;
+  font-family: var(--font-mono);
+}
+
 /* Gauges */
 .gauge-face {
   fill: #090d16;
@@ -504,16 +598,16 @@ select:focus-visible {
 
 .gauge-title {
   fill: #94a3b8;
-  font-size: 8.5px;
+  font-size: 8px;
   text-anchor: middle;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .gauge-reading {
   fill: #f8fafc;
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 11.5px;
+  font-weight: 800;
   text-anchor: middle;
 }
 
@@ -535,12 +629,12 @@ select:focus-visible {
 }
 
 .svg-interactive:hover .comp-hit {
-  fill: rgba(56, 189, 248, 0.1);
+  fill: rgba(56, 189, 248, 0.08);
   stroke: rgba(56, 189, 248, 0.45);
 }
 
 .svg-interactive.selected-comp .comp-hit {
-  fill: rgba(56, 189, 248, 0.16);
+  fill: rgba(56, 189, 248, 0.14);
   stroke: #38bdf8;
 }
 
@@ -552,15 +646,16 @@ select:focus-visible {
 }
 
 .comp-sublabel {
-  fill: #94a3b8;
-  font-size: 9.2px;
+  fill: #cbd5e1;
+  font-size: 9.5px;
   font-family: var(--font-mono);
   text-anchor: middle;
 }
 
 .comp-micro {
   fill: #7dd3fc;
-  font-size: 8.5px;
+  font-size: 9px;
+  font-weight: 600;
   font-family: var(--font-mono);
   text-anchor: middle;
 }
@@ -641,26 +736,19 @@ select:focus-visible {
 .cock-open {
   fill: #10b981;
   stroke: #064e3b;
-  stroke-width: 2;
+  stroke-width: 1.5;
 }
 
 .cock-test {
   fill: #f59e0b;
   stroke: #78350f;
-  stroke-width: 2;
+  stroke-width: 1.5;
 }
 
 .cock-closed {
   fill: #f43f5e;
   stroke: #881337;
-  stroke-width: 2;
-}
-
-.cock-label {
-  fill: #cbd5e1;
-  font-size: 8.8px;
-  text-anchor: middle;
-  font-family: var(--font-mono);
+  stroke-width: 1.5;
 }
 
 .relief-closed {
@@ -683,7 +771,7 @@ select:focus-visible {
   gap: 1rem;
   font-size: 0.78rem;
   color: var(--text-muted);
-  padding-top: 0.25rem;
+  padding-top: 0.15rem;
 }
 
 .dot {

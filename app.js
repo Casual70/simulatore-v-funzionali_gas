@@ -6,12 +6,13 @@
  *    e verifica SG / diagnostica differenziale Pilota vs Sede Otturatore.
  * 2) Regolatori ad AZIONE DIRETTA (Fail-Open, es. Pietro Fiorentini Dival 600 / Norval)
  *    con azione diretta molla/membrana, verifica SG per spinta diretta su membrana e prova Monitor.
+ * 3) Modalità Visualizzazione: Doppia Linea, Focus Solo 1ª Linea, Focus Solo 2ª Linea + Zoom.
  */
 
 const PRESETS = {
   'remi-piloted': {
     id: 'remi-piloted',
-    arch: 'PILOTED', // Fail-Close: necessita di Pmot generata dal pilota alimentato da monte
+    arch: 'PILOTED',
     name: 'Cabina REMI Pilotata [FAIL-CLOSE] (Aperflux 851 + Pilota 204/A + Preriduttore R14)',
     archSubtitle:
       'Architettura: <strong>REGOLATORI PILOTATI (Normalmente Chiusi / Fail-Close)</strong> — Richiedono Alimentazione Pilota (Pmot) per aprire; la presa d\'impulso comanda la modulazione e l\'SG',
@@ -23,11 +24,11 @@ const PRESETS = {
     pumpMax: 3.0,
     pumpStep: 0.01,
     fineStep: 0.02,
-    sgAllowance: 0.03, // SG strettissimo tipico dei pilotati (Classe SG 2,5: +0,03 bar)
-    seatLeakDelta: 0.55, // Incremento anomalo per trafilamento sede otturatore
-    pilotLeakDelta: 0.32, // Incremento anomalo per trafilamento ugello pilota/preriduttore
-    pilotSupplyNominal: 3.20, // Pressione uscita preriduttore R14 (Pd + ~1,7 bar)
-    defaultImpulseTap: 'manifold', // Nei pilotati REMI spesso l'impulso legge a valle di V2 e va commutato sul tronco per l'SG!
+    sgAllowance: 0.03,
+    seatLeakDelta: 0.55,
+    pilotLeakDelta: 0.32,
+    pilotSupplyNominal: 3.20,
+    defaultImpulseTap: 'manifold',
     line1: {
       regModel: 'Pietro Fiorentini Aperflux 851 + Pilota 204/A (Fail-Close)',
       monModel: 'Pietro Fiorentini Aperflux 851 Monitor + Pilota 204/A',
@@ -62,10 +63,10 @@ const PRESETS = {
     pumpMax: 60.0,
     pumpStep: 0.5,
     fineStep: 0.5,
-    sgAllowance: 0.8, // +0,8 mbar in chiusura con pilota sano
+    sgAllowance: 0.8,
     seatLeakDelta: 11.0,
     pilotLeakDelta: 6.5,
-    pilotSupplyNominal: 150.0, // mbar motrice pilota
+    pilotSupplyNominal: 150.0,
     defaultImpulseTap: 'manifold',
     line1: {
       regModel: 'Pietro Fiorentini Reval 182 Pilotato (Fail-Close)',
@@ -89,7 +90,7 @@ const PRESETS = {
   },
   'dival-direct': {
     id: 'dival-direct',
-    arch: 'DIRECT', // Fail-Open: la molla apre direttamente l'otturatore, la presa d'impulso spinge sulla membrana per chiudere
+    arch: 'DIRECT',
     name: 'GRF Azione Diretta [FAIL-OPEN] (Dival 600 / Norval Molla Diretta)',
     archSubtitle:
       'Architettura: <strong>REGOLATORI AD AZIONE DIRETTA (Normalmente Aperti / Fail-Open)</strong> — Assenza di pilota: la molla apre l\'otturatore e la pressione nella presa d\'impulso comprime direttamente la membrana per chiudere (SG)',
@@ -101,11 +102,11 @@ const PRESETS = {
     pumpMax: 60.0,
     pumpStep: 0.5,
     fineStep: 0.5,
-    sgAllowance: 2.2, // SG più ampio (+2,2 mbar, Classe SG 10) necessario a vincere direttamente la rigidezza della molla
+    sgAllowance: 2.2,
     seatLeakDelta: 12.0,
     pilotLeakDelta: 0.0,
     pilotSupplyNominal: 0,
-    defaultImpulseTap: 'trunk', // Nei gruppi diretti compatti la presa d'impulso è tipicamente sul tronco prima di V2
+    defaultImpulseTap: 'trunk',
     line1: {
       regModel: 'Pietro Fiorentini Dival 600 / Norval (Azione Diretta - Fail-Open)',
       monModel: 'Monitor Azione Diretta in Serie',
@@ -128,17 +129,14 @@ const PRESETS = {
   }
 };
 
-/**
- * Procedure Guidate Step-by-Step con focus sulle differenze tra Regolatori Pilotati e Azione Diretta
- */
 const GUIDED_PROCEDURES = {
   'guided-piloted-sg': [
     {
       title: 'Passo 1 (Reg. Pilotato): Osserva l\'effetto della Presa d\'Impulso a Valle di V2 durante lo Scambio Linea',
-      desc: 'In una cabina con Regolatori Pilotati, spesso la presa d\'impulso legge il Collettore a VALLE di V2. Chiudi ora la valvola di valle V2-L1: vedrai che il collettore passa sulla 2ª Linea (1,35 bar), ma poiché l\'impulso del pilota L1 legge ancora il collettore (1,35 < 1,50 bar), il pilota L1 NON va in chiusura SG bensì SPALANCA il regolatore L1 (P tronco L1 sale al Monitor 1,65 bar)!',
+      desc: 'In una cabina con Regolatori Pilotati, spesso la presa d\'impulso legge il Collettore a VALLE di V2. Chiudi ora la valvola di valle V2-L1: vedrai che il collettore passa sulla 2ª Linea, ma poiché l\'impulso del pilota L1 legge ancora il collettore (pressione inferiore al set di L1), il pilota L1 NON va in chiusura SG bensì SPALANCA il regolatore L1 (P tronco L1 sale al Monitor)!',
       check: (s) => {
         if (s.preset.arch !== 'PILOTED') {
-          return { ok: false, msg: 'Seleziona la configurazione "Cabina REMI Pilotata [FAIL-CLOSE]" in alto a sinistra.' };
+          return { ok: false, msg: 'Seleziona una configurazione Pilotata [FAIL-CLOSE] in alto a sinistra.' };
         }
         if (s.l1.v2Open) {
           return { ok: false, msg: 'Clicca sulla valvola di valle V2-L1 e premi "Chiudi Valvola" per isolare la Linea 1.' };
@@ -157,7 +155,7 @@ const GUIDED_PROCEDURES = {
     },
     {
       title: 'Passo 2 (Reg. Pilotato): Commutazione Presa d\'Impulso sul TRONCO e Innesco con Sfiato SF-L1',
-      desc: 'Per verificare la Sovrapressione di Chiusura (SG) del regolatore pilotato L1: 1) Clicca su REG. PRINC. L1 (o su Imp.Reg) e commuta il "Punto di Presa Impulso" su TRONCO (a monte di V2); 2) Apri brevemente lo sfiato a candela SF-L1 per scaricare l\'eccesso accumulato e osservare il pilota modulare a 1,50 bar.',
+      desc: 'Per verificare la Sovrapressione di Chiusura (SG) del regolatore pilotato L1: 1) Clicca su REG. PRINC. L1 (o su Imp.Reg) e commuta il "Punto di Presa Impulso" su TRONCO (a monte di V2); 2) Apri lo sfiato a candela SF-L1 per scaricare l\'eccesso accumulato e osservare il pilota modulare al set-point.',
       check: (s) => {
         if (s.l1.v2Open) {
           return { ok: false, msg: 'Mantieni V2-L1 chiusa.' };
@@ -171,7 +169,7 @@ const GUIDED_PROCEDURES = {
         if (!s.l1.sfOpen) {
           return {
             ok: false,
-            msg: 'Ora apri lo sfiato a candela SF-L1 per far scendere la pressione del tronco al set-point del regolatore L1 (1,50 bar).'
+            msg: 'Ora apri lo sfiato a candela SF-L1 per far scendere la pressione del tronco al set-point del regolatore L1.'
           };
         }
         return {
@@ -185,7 +183,7 @@ const GUIDED_PROCEDURES = {
     },
     {
       title: 'Passo 3 (Reg. Pilotato): Chiusura Sfiato SF-L1 e Misura dell\'SG (Azzeramento Pmot)',
-      desc: 'Richiudi ora lo sfiato a candela SF-L1 per portare la portata a ZERO. Osserva cosa fa il pilota: appena la pressione nel tronco sale di appena +0,03 bar (SG), la membrana del pilota chiude l\'ugello e scarica la pressione motrice (Pmot scende uguale a P tronco), facendo chiudere ermeticamente l\'otturatore principale!',
+      desc: 'Richiudi ora lo sfiato a candela SF-L1 per portare la portata a ZERO. Osserva cosa fa il pilota: appena la pressione nel tronco sale del piccolo SG, la membrana del pilota chiude l\'ugello e scarica la pressione motrice (Pmot scende uguale a P tronco), facendo chiudere ermeticamente l\'otturatore principale!',
       check: (s) => {
         if (s.l1.v2Open || s.l1.regImpulseTap !== 'trunk' || s.l1.sfOpen) {
           return {
@@ -204,7 +202,7 @@ const GUIDED_PROCEDURES = {
     },
     {
       title: 'Passo 4 (Reg. Pilotato): Diagnostica Differenziale con Rubinetto Alimentazione Pilota (Fail-Close)',
-      desc: 'Nei regolatori pilotati, se trovi un SG fuori tolleranza, come capisci se trafila l\'ugello del pilota o la sede dell\'otturatore principale? 1) Spunta "Simula trafilamento ugello Pilota L1" nel pannello in basso a destra (vedi P tronco salire); 2) Chiudi il rubinetto "Alim.Pilota" (Alimentazione Pilota OFF) e fai un rapido apri/chiudi di SF-L1: vedrai che senza pilota la pressione resta ferma!',
+      desc: 'Nei regolatori pilotati, se trovi un SG fuori tolleranza, come capisci se trafila l\'ugello del pilota o la sede dell\'otturatore principale? 1) Spunta "Simula trafilamento ugello Pilota L1" nel pannello in basso a destra; 2) Chiudi il rubinetto "Alim.Pil" (Alimentazione Pilota OFF): vedrai che il regolatore va in Fail-Close e la pressione non sale più!',
       check: (s) => {
         if (!s.faultPilot1Leak) {
           return {
@@ -215,7 +213,7 @@ const GUIDED_PROCEDURES = {
         if (s.l1.regPilotSupplyOpen) {
           return {
             ok: false,
-            msg: 'Con il trafilamento pilota attivo la pressione è salita! Ora clicca su REG. PRINC. L1 (o Alim.Pilota) e CHIUDI l\'Alimentazione Pilota per verificare che l\'otturatore principale tenga.'
+            msg: 'Con il trafilamento pilota attivo la pressione è salita! Ora clicca su REG. PRINC. L1 (o Alim.Pil) e CHIUDI l\'Alimentazione Pilota.'
           };
         }
         return {
@@ -226,7 +224,7 @@ const GUIDED_PROCEDURES = {
     },
     {
       title: 'Passo 5 (Reg. Pilotato): Come mandare in lavoro il Monitor su un Regolatore Pilotato',
-      desc: 'Togli il guasto al pilota, RIAPRI l\'Alimentazione Pilota (Alim.Pilota ON) e apri lo sfiato SF-L1. Ricorda: su un regolatore pilotato per provare il Monitor NON devi chiudere l\'alimentazione pilota (altrimenti chiude!), ma devi SCARICARE la Presa d\'Impulso del Regolatore L1 ("Stato Presa Impulso -> SCARICATA IN ATMOSFERA"). Così il pilota sente 0 bar, manda la massima Pmot e spalanca il regolatore, facendo entrare in regolazione il Monitor L1!',
+      desc: 'Togli il guasto al pilota, RIAPRI l\'Alimentazione Pilota (Alim.Pil ON) e apri lo sfiato SF-L1. Su un regolatore pilotato per provare il Monitor devi SCARICARE la Presa d\'Impulso del Regolatore L1 ("Scarica Impulso a 0"). Così il pilota sente 0, manda la massima Pmot e spalanca il regolatore, facendo entrare il Monitor L1!',
       check: (s) => {
         if (s.faultPilot1Leak) {
           return { ok: false, msg: 'Disattiva prima la casella "Simula trafilamento ugello Pilota L1".' };
@@ -234,7 +232,7 @@ const GUIDED_PROCEDURES = {
         if (!s.l1.regPilotSupplyOpen) {
           return {
             ok: false,
-            msg: 'Riapri il rubinetto Alimentazione Pilota (Alim.Pilota ON): senza alimentazione motrice il regolatore pilotato rimane chiuso!'
+            msg: 'Riapri il rubinetto Alimentazione Pilota (Alim.Pil ON): senza alimentazione motrice il regolatore pilotato rimane chiuso!'
           };
         }
         if (!s.l1.sfOpen) {
@@ -243,12 +241,12 @@ const GUIDED_PROCEDURES = {
         if (s.l1.regImpulseState !== 'vented') {
           return {
             ok: false,
-            msg: 'Seleziona REG. PRINC. L1 e imposta la Presa d\'Impulso su "SCARICATA IN ATMOSFERA (Forza Apertura -> Prova Monitor)".'
+            msg: 'Seleziona REG. PRINC. L1 e clicca su "Scarica Impulso a 0 (Prova Monitor)".'
           };
         }
         return {
           ok: true,
-          msg: `Eccellente! Con l'impulso scaricato a 0 bar e alimentazione pilota attiva, Pmot è salita al massimo (${formatPressure(
+          msg: `Eccellente! Con l'impulso scaricato a 0 e alimentazione pilota attiva, Pmot è salita al massimo (${formatPressure(
             s.l1.regPmot,
             s.preset
           )}), il Regolatore L1 si è spalancato e il Monitor L1 governa il tronco a ${formatPressure(s.l1.pTrunk, s.preset)}!`
@@ -278,12 +276,12 @@ const GUIDED_PROCEDURES = {
     },
     {
       title: 'Passo 2 (Azione Diretta): Verifica del Monitor per Fail-Open (Scarico Presa d\'Impulso)',
-      desc: 'In un regolatore ad Azione Diretta (Fail-Open), la molla spinge sempre per aprire. Apri lo sfiato SF-L1 e imposta la Presa d\'Impulso del Regolatore L1 su "SCARICATA IN ATMOSFERA": mancando la pressione sotto la membrana, la molla spalanca immediatamente l\'otturatore e il Monitor entra in regolazione.',
+      desc: 'In un regolatore ad Azione Diretta (Fail-Open), la molla spinge sempre per aprire. Apri lo sfiato SF-L1 e scarica la Presa d\'Impulso del Regolatore L1 ("Scarica Impulso a 0"): mancando la pressione sotto la membrana, la molla spalanca immediatamente l\'otturatore e il Monitor entra in regolazione.',
       check: (s) => {
         if (s.l1.v2Open || !s.l1.sfOpen || s.l1.regImpulseState !== 'vented') {
           return {
             ok: false,
-            msg: 'Con V2-L1 chiusa, apri lo sfiato SF-L1 e imposta la Presa d\'Impulso di REG. PRINC. L1 su "SCARICATA IN ATMOSFERA".'
+            msg: 'Con V2-L1 chiusa, apri lo sfiato SF-L1 e clicca su "Scarica Impulso a 0 (Prova Monitor)" su REG. PRINC. L1.'
           };
         }
         return {
@@ -307,7 +305,7 @@ const GUIDED_PROCEDURES = {
         if (s.l1.regImpulseTap !== 'trunk') {
           return {
             ok: false,
-            msg: 'Poiché il regolatore è pilotato, commuta il Punto di Presa Impulso di REG. PRINC. L1 su "TRONCO (a monte di V2)" (e scarica un istante con SF-L1) affinché non legga la pressione inferiore della 2ª Linea!'
+            msg: 'Poiché il regolatore è pilotato, commuta il Punto di Presa Impulso di REG. PRINC. L1 su "TRONCO (a monte di V2)" affinché non legga la pressione inferiore della 2ª Linea!'
           };
         }
         return { ok: true, msg: 'Seconda Linea in erogazione regolare e tronco L1 correttamente isolato con impulso sul tronco!' };
@@ -334,12 +332,12 @@ const GUIDED_PROCEDURES = {
     },
     {
       title: 'Passo 3: Verifica Funzionale del Monitor L1',
-      desc: 'Apri lo sfiato a candela SF-L1 e manda in apertura il Regolatore Principale L1 scaricando la sua presa d\'impulso ("SCARICATA IN ATMOSFERA", mantenendo aperta l\'alimentazione pilota se pilotato) per leggere la taratura del Monitor L1.',
+      desc: 'Apri lo sfiato a candela SF-L1 e manda in apertura il Regolatore Principale L1 scaricando la sua presa d\'impulso ("Scarica Impulso a 0", mantenendo aperta l\'alimentazione pilota se pilotato) per leggere la taratura del Monitor L1.',
       check: (s) => {
         if (s.l1.v2Open || !s.l1.sfOpen || s.l1.regImpulseState !== 'vented' || !s.l1.regPilotSupplyOpen) {
           return {
             ok: false,
-            msg: 'Apri SF-L1, assicurati che Alim.Pilota sia attiva e imposta la Presa d\'Impulso di REG. PRINC. L1 su "SCARICATA IN ATMOSFERA".'
+            msg: 'Apri SF-L1, assicurati che Alim.Pil sia attiva e clicca su "Scarica Impulso a 0 (Prova Monitor)" su REG. PRINC. L1.'
           };
         }
         return {
@@ -413,6 +411,8 @@ let state = {
   presetKey: 'remi-piloted',
   preset: PRESETS['remi-piloted'],
   mode: 'free',
+  viewMode: 'both', // 'both' | 'l1' | 'l2'
+  zoomPercent: 100, // 80 .. 200
   guidedStepIndex: 0,
   selectedComp: 'reg-l1',
   flowDemand: 450,
@@ -438,18 +438,15 @@ function createLineState(cfg, preset) {
     bpOpen: false,
     sbArmed: true,
     sbTripReason: null,
-    blkImpulseMode: 'line', // 'line' | 'test'
+    blkImpulseMode: 'line',
 
-    // Parametri specifici Regolatore Principale (Pilotato vs Azione Diretta)
-    regPilotSupplyOpen: true, // Rubinetto alimentazione pilota da monte (solo per PILOTED)
-    regImpulseTap: preset.defaultImpulseTap, // 'trunk' (monte V2) | 'manifold' (valle V2)
-    regImpulseState: 'connected', // 'connected' | 'isolated' | 'vented' (scaricato in atmosfera)
-    regTrappedImpulseP: cfg.regSet,
-    regPmot: preset.arch === 'PILOTED' ? cfg.regSet + 0.6 : 0, // Pressione motrice servomotore pilota
+    regPilotSupplyOpen: true,
+    regImpulseTap: preset.defaultImpulseTap, // 'trunk' | 'manifold'
+    regImpulseState: 'connected', // 'connected' | 'vented'
+    regPmot: preset.arch === 'PILOTED' ? cfg.regSet + 0.6 : 0,
 
-    // Parametri specifici Regolatore Monitor
     monPilotSupplyOpen: true,
-    monImpulseState: 'connected', // 'connected' | 'vented'
+    monImpulseState: 'connected',
     monPmot: preset.arch === 'PILOTED' ? preset.pilotSupplyNominal : 0,
 
     sfOpen: false,
@@ -458,8 +455,8 @@ function createLineState(cfg, preset) {
     blkMax: cfg.blkMax,
     blkMin: cfg.blkMin,
     pTrunk: cfg.regSet,
-    trappedTrunkP: cfg.regSet, // Memoria pressione intrappolata nel tronco chiuso
-    activeRole: 'ACTIVE', // 'ACTIVE' | 'MONITOR_WORK' | 'STANDBY' | 'ISOLATED' | 'TRIPPED' | 'PILOT_CLOSED'
+    trappedTrunkP: cfg.regSet,
+    activeRole: 'ACTIVE',
     testedMaxTrip: false,
     testedMinTrip: false,
     lastMaxTripVal: null,
@@ -507,7 +504,6 @@ function initPlant(presetKey) {
   state.testbox.pressure = preset.line1.regSet;
   state.testbox.lastTripText = '—';
 
-  // Aggiorna controlli DOM
   const flowSlider = document.getElementById('flow-slider');
   flowSlider.max = preset.maxFlow;
   flowSlider.value = state.flowDemand;
@@ -529,21 +525,16 @@ function initPlant(presetKey) {
 }
 
 /**
- * Motore Fisico / Pneumatico con distinzione rigorosa:
- * - Regolatori Pilotati (Fail-Close, servomotore a pressione motrice Pmot + pilota + presa d'impulso)
- * - Regolatori Azione Diretta (Fail-Open, molla diretta contro membrana presa d'impulso)
+ * Motore Fisico / Pneumatico (Entrambe le linee sono sempre calcolate in tempo reale anche in vista singola linea)
  */
 function recalculatePhysics() {
   const p = state.preset;
   const l1 = state.l1;
   const l2 = state.l2;
 
-  // Passo 1: Stima preliminare del collettore di valle per le prese d'impulso collegate a valle di V2
-  // (Se L2 è attiva mentre V2-L1 è chiusa, il collettore è alla pressione di L2)
   computeLinePneumatics(l2, 2, state.pdManifold);
   computeLinePneumatics(l1, 1, state.pdManifold);
 
-  // Passo 2: Calcolo effettivo del Collettore di Valle (Pd)
   const l1CanFeed = canLineDeliverGas(l1);
   const l2CanFeed = canLineDeliverGas(l2);
 
@@ -560,11 +551,9 @@ function recalculatePhysics() {
 
   state.pdManifold = pd;
 
-  // Passo 3: Ricalcolo di precisione dei tronchi L1 e L2 con il valore aggiornato di Pd sul collettore
   computeLinePneumatics(l1, 1, state.pdManifold);
   computeLinePneumatics(l2, 2, state.pdManifold);
 
-  // Ricalcolo finale Pd dopo l'assestamento dei piloti
   const l1FeedsNow = canLineDeliverGas(l1);
   const l2FeedsNow = canLineDeliverGas(l2);
   if (l1FeedsNow && l2FeedsNow) {
@@ -573,7 +562,6 @@ function recalculatePhysics() {
       l2.pTrunk = pd;
       l2.activeRole = 'STANDBY';
       if (p.arch === 'PILOTED') {
-        // In stand-by il pilota della 2ª linea sente Pd > Set_L2, quindi scarica la pressione motrice (Pmot = Pd)
         l2.regPmot = pd;
       }
     }
@@ -584,10 +572,9 @@ function recalculatePhysics() {
     pd = l2.pTrunk;
     if (l1.v2Open) l1.pTrunk = pd;
   } else {
-    pd = state.flowDemand > 0 ? 0.0 : 0.0;
+    pd = 0.0;
   }
 
-  // Passo 4: Valuta Valvola di Sfioro (VS)
   const vsSenseP = state.testbox.target === 'vs' ? state.testbox.pressure : pd;
   state.vsVenting = vsSenseP >= state.vsSet;
   if (state.vsVenting && state.testbox.target !== 'vs' && pd > state.vsSet) {
@@ -595,15 +582,12 @@ function recalculatePhysics() {
   }
   state.pdManifold = pd;
 
-  // Passo 5: Controllo scatto Valvole di Blocco (SB-L1 e SB-L2)
   checkSlamShut(l1, 'blk-l1', 'SB-L1 (1ª Linea)');
   checkSlamShut(l2, 'blk-l2', 'SB-L2 (2ª Linea)');
 
-  // Se un blocco è appena scattato, aggiorna lo stato della linea
   if (!l1.sbArmed) computeLinePneumatics(l1, 1, state.pdManifold);
   if (!l2.sbArmed) computeLinePneumatics(l2, 2, state.pdManifold);
 
-  // Passo 6: Stato generale dell'erogazione
   const finalL1 = canLineDeliverGas(l1);
   const finalL2 = canLineDeliverGas(l2);
   if (!finalL1 && !finalL2) {
@@ -623,7 +607,6 @@ function canLineDeliverGas(line) {
   const upstreamOk = (line.v1Open || line.bpOpen) && line.sbArmed;
   if (!upstreamOk || !line.v2Open) return false;
   if (state.preset.arch === 'PILOTED') {
-    // Nel regolatore pilotato Fail-Close, se si chiude l'alimentazione pilota sia del Regolatore che del Monitor, il regolatore chiude!
     if (!line.regPilotSupplyOpen || !line.monPilotSupplyOpen) {
       return false;
     }
@@ -631,15 +614,11 @@ function canLineDeliverGas(line) {
   return true;
 }
 
-/**
- * Calcola il comportamento pneumatico del Regolatore Principale + Monitor (Pilotato vs Azione Diretta)
- */
 function computeLinePneumatics(line, lineNum, currentManifoldP) {
   const p = state.preset;
   const isPiloted = p.arch === 'PILOTED';
   const upstreamAvailable = (line.v1Open || line.bpOpen) && line.sbArmed;
 
-  // Se non c'è gas a monte (V1 chiusa o Blocco scattato)
   if (!upstreamAvailable) {
     if (line.sfOpen || (line.v2Open && state.flowDemand > 0 && !canOtherLineFeed(lineNum))) {
       line.pTrunk = 0;
@@ -651,21 +630,15 @@ function computeLinePneumatics(line, lineNum, currentManifoldP) {
     return;
   }
 
-  // CASO ESCLUSIVO REGOLATORE PILOTATO (FAIL-CLOSE):
-  // Se l'alimentazione pilota (Alim.Pilota o Alim.Mon) è CHIUSA, viene a mancare la pressione motrice Pmot -> l'otturatore CHIUDE!
   if (isPiloted && (!line.regPilotSupplyOpen || !line.monPilotSupplyOpen)) {
     line.activeRole = 'PILOT_CLOSED';
     const hasSeatLeak = lineNum === 1 && state.faultSeat1Leak;
     const hasOutflow = line.sfOpen || (line.v2Open && state.flowDemand > 0);
 
     if (hasOutflow) {
-      // Se lo sfiato è aperto o V2 è aperta verso utenza mentre il pilota è spento, il tronco si svuota (o prende la P del collettore se V2 aperta)
       line.pTrunk = line.v2Open ? currentManifoldP : 0;
       line.trappedTrunkP = line.pTrunk;
     } else {
-      // V2 chiusa e SF chiuso (tronco isolato) con Alimentazione Pilota CHIUSA:
-      // Ottimo test diagnostico Tipo 3! Se trafila la sede principale (faultSeat1Leak), la pressione sale comunque;
-      // se invece trafilava solo l'ugello del pilota (faultPilot1Leak), chiudendo Alim.Pilota la pressione NON sale!
       if (hasSeatLeak) {
         line.pTrunk = Math.min(line.monSet + p.sgAllowance, line.regSet + p.seatLeakDelta);
       } else {
@@ -673,58 +646,48 @@ function computeLinePneumatics(line, lineNum, currentManifoldP) {
       }
       line.trappedTrunkP = line.pTrunk;
     }
-    line.regPmot = line.pTrunk; // Pmot scaricata a P tronco (nessun differenziale di apertura)
+    line.regPmot = line.pTrunk;
     line.monPmot = line.monPilotSupplyOpen ? p.pilotSupplyNominal : line.pTrunk;
     return;
   }
 
-  // Determiniamo cosa legge la presa d'impulso del Regolatore Principale:
-  // 1) Se lo stato impulso è 'vented' (scaricato in atmosfera), legge 0 -> spalanca!
-  // 2) Se il punto di presa è 'manifold' (a valle di V2) e V2 è chiusa, legge currentManifoldP (es. 1,35 bar della 2ª linea)!
   const regForcedOpenByImpulse =
     line.regImpulseState === 'vented' ||
     (lineNum === 1 && state.faultRupture1) ||
+    (line.monImpulseState === 'vented' ? false : false) ||
     (!line.v2Open && line.regImpulseTap === 'manifold' && currentManifoldP < line.regSet);
 
-  // Determiniamo la pressione obiettivo regolata dal treno (Regolatore vs Monitor):
   let targetP = line.regSet;
   if (regForcedOpenByImpulse) {
-    // Il regolatore principale è spalancato -> interviene il MONITOR in serie!
     targetP = line.monSet;
     line.activeRole = 'MONITOR_WORK';
   } else {
     line.activeRole = 'ACTIVE';
   }
 
-  // C'è portata attraverso la linea?
   const hasFlow = (line.v2Open && state.flowDemand > 0) || line.sfOpen;
 
   if (hasFlow) {
-    // Con portata attiva (V2 aperta o sfiato a candela SF aperto), il regolatore/monitor regola esattamente al suo set-point!
     line.pTrunk = targetP;
     line.trappedTrunkP = targetP;
 
     if (isPiloted) {
       const deltaMot = p.unit === 'bar' ? 0.65 : 35.0;
       if (line.activeRole === 'MONITOR_WORK') {
-        line.regPmot = p.pilotSupplyNominal; // Pilota Reg.1 tutto aperto
-        line.monPmot = +(targetP + deltaMot).toFixed(2); // Pilota Monitor in modulazione
+        line.regPmot = p.pilotSupplyNominal;
+        line.monPmot = +(targetP + deltaMot).toFixed(2);
       } else {
-        line.regPmot = +(targetP + deltaMot).toFixed(2); // Pilota Reg.1 in modulazione
-        line.monPmot = p.pilotSupplyNominal; // Pilota Monitor tutto aperto
+        line.regPmot = +(targetP + deltaMot).toFixed(2);
+        line.monPmot = p.pilotSupplyNominal;
       }
     }
   } else {
-    // PORTATA ZERO (V2 chiusa e SF chiuso -> Condizione di Verifica SG / Tenuta Interna!):
     let lockupP = targetP + p.sgAllowance;
 
-    // Se prima di chiudere SF il tronco era rimasto intrappolato a una pressione superiore (es. perché prima l'impulso era su Collettore),
-    // in assenza di sfiato la pressione intrappolata nel tronco chiuso non può scendere da sola finché non si apre SF!
     if (line.trappedTrunkP > lockupP && !regForcedOpenByImpulse) {
       lockupP = line.trappedTrunkP;
     }
 
-    // Eventuali trafilamenti sulla Linea 1 a portata zero:
     if (lineNum === 1) {
       if (state.faultSeat1Leak) {
         lockupP = Math.max(lockupP, line.regSet + p.seatLeakDelta);
@@ -739,9 +702,8 @@ function computeLinePneumatics(line, lineNum, currentManifoldP) {
     if (isPiloted) {
       if (regForcedOpenByImpulse) {
         line.regPmot = p.pilotSupplyNominal;
-        line.monPmot = line.pTrunk; // Il Monitor va in chiusura SG
+        line.monPmot = line.pTrunk;
       } else {
-        // In chiusura SG il pilota scarica la pressione motrice a P tronco (Pmot = Ptrunk -> differenziale zero -> chiusura ermetica!)
         line.regPmot =
           lineNum === 1 && state.faultPilot1Leak && line.regPilotSupplyOpen
             ? +(line.pTrunk + (p.unit === 'bar' ? 0.25 : 15)).toFixed(2)
@@ -791,6 +753,58 @@ function checkSlamShut(line, targetId, label) {
 }
 
 /**
+ * Gestione Vista Singola Linea / Doppia Linea e Zoom SVG
+ */
+function applyViewAndZoom() {
+  const svg = document.getElementById('pid-svg');
+  const gL1 = document.getElementById('svg-line-1');
+  const gL2 = document.getElementById('svg-line-2');
+  const gGaugePd = document.getElementById('svg-gauge-pd-group');
+  const otherSummary = document.getElementById('other-line-summary');
+  const otherText = document.getElementById('other-line-text');
+  const p = state.preset;
+
+  // Aggiorna bottoni attivi
+  document.querySelectorAll('[data-view-mode]').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-view-mode') === state.viewMode);
+  });
+
+  if (state.viewMode === 'both') {
+    gL1.style.display = 'block';
+    gL2.style.display = 'block';
+    gGaugePd.setAttribute('transform', 'translate(1105, 500)');
+    svg.setAttribute('viewBox', '0 0 1200 760');
+    otherSummary.hidden = true;
+  } else if (state.viewMode === 'l1') {
+    gL1.style.display = 'block';
+    gL2.style.display = 'none';
+    gGaugePd.setAttribute('transform', 'translate(1105, 315)');
+    svg.setAttribute('viewBox', '0 8 1200 365');
+    otherSummary.hidden = false;
+    const l2Badge = document.getElementById('svg-l2-badge').textContent;
+    otherText.textContent = `⚡ Dinamica 2ª Linea attiva in background: ${l2Badge} | P_tr2 = ${formatPressure(
+      state.l2.pTrunk,
+      p
+    )}`;
+  } else if (state.viewMode === 'l2') {
+    gL1.style.display = 'none';
+    gL2.style.display = 'block';
+    gGaugePd.setAttribute('transform', 'translate(1105, 500)');
+    svg.setAttribute('viewBox', '0 365 1200 355');
+    otherSummary.hidden = false;
+    const l1Badge = document.getElementById('svg-l1-badge').textContent;
+    otherText.textContent = `⚡ Dinamica 1ª Linea attiva in background: ${l1Badge} | P_tr1 = ${formatPressure(
+      state.l1.pTrunk,
+      p
+    )}`;
+  }
+
+  // Applica livello di Zoom tramite larghezza percentuale nel contenitore scrollabile
+  svg.style.width = `${state.zoomPercent}%`;
+  document.getElementById('zoom-readout').textContent = `${state.zoomPercent}%`;
+}
+
+/**
  * Rendering P&ID SVG + KPI + Inspector
  */
 function renderAll() {
@@ -801,6 +815,7 @@ function renderAll() {
   document.getElementById('plant-arch-subtitle').innerHTML = p.archSubtitle;
   document.getElementById('kpi-pu').textContent = `${p.pu.toFixed(1).replace('.', ',')} bar`;
   document.getElementById('kpi-ptr1').textContent = formatPressure(l1.pTrunk, p);
+  document.getElementById('kpi-ptr2').textContent = formatPressure(l2.pTrunk, p);
   document.getElementById('kpi-pd').textContent = formatPressure(state.pdManifold, p);
   document.getElementById('kpi-flow').textContent = `${state.flowDemand} Sm³/h`;
   document.getElementById('flow-val-label').textContent = `${state.flowDemand} Sm³/h`;
@@ -836,7 +851,6 @@ function renderAll() {
   document.getElementById('svg-l1-title').textContent = `LINEA 1 — PRINCIPALE (${archTag})`;
   document.getElementById('svg-l2-title').textContent = `LINEA 2 — SECONDA LINEA DI RISERVA (${archTag})`;
 
-  // Mostra/nascondi circuito alimentazione piloti da monte
   const showPilotSupply = p.arch === 'PILOTED';
   document.getElementById('svg-pilot-supply-l1').style.display = showPilotSupply ? 'block' : 'none';
   document.getElementById('svg-pilot-supply-l2').style.display = showPilotSupply ? 'block' : 'none';
@@ -854,6 +868,7 @@ function renderAll() {
     el.classList.toggle('selected-comp', compId === state.selectedComp);
   });
 
+  applyViewAndZoom();
   renderTestbox();
   renderInspector();
   renderGuidedBanner();
@@ -862,9 +877,9 @@ function renderAll() {
 function renderLineSVG(num, line) {
   const p = state.preset;
   const sfx = `l${num}`;
-  const yPipe = num === 1 ? 180 : 485;
-  const yImpReg = num === 1 ? 110 : 415;
-  const yRegTop = num === 1 ? 136 : 441;
+  const yPipe = num === 1 ? 235 : 575;
+  const yImpReg = num === 1 ? 146 : 486;
+  const yRegTop = num === 1 ? 186 : 526;
 
   // Valvole V1, V2, BP
   document.getElementById(`shape-v1-${sfx}`).setAttribute('class', line.v1Open ? 'valve-open' : 'valve-closed');
@@ -904,6 +919,9 @@ function renderLineSVG(num, line) {
       'class',
       line.monPilotSupplyOpen ? 'cock-open' : 'cock-closed'
     );
+    document.getElementById(`lbl-palim-mon-${sfx}`).textContent = line.monPilotSupplyOpen
+      ? 'Alim.Mon: ON'
+      : 'Alim.Mon: OFF';
     document.getElementById(`pmot-reg-${sfx}`).textContent = `Pmot: ${formatShort(line.regPmot, p)} ${p.unit}`;
     document.getElementById(`pmot-mon-${sfx}`).textContent = `Pmot: ${formatShort(line.monPmot, p)} ${p.unit}`;
   } else {
@@ -911,10 +929,10 @@ function renderLineSVG(num, line) {
     document.getElementById(`pmot-mon-${sfx}`).textContent = 'Molla Diretta';
   }
 
-  // Tracciato dinamico Presa d'Impulso Regolatore Principale (TRONCO a monte di V2 [x=742] vs COLLETTORE a valle di V2 [x=855])
-  const tapX = line.regImpulseTap === 'trunk' ? 742 : 855;
+  // Tracciato dinamico Presa d'Impulso Regolatore Principale (TRONCO a monte di V2 [x=772] vs COLLETTORE a valle di V2 [x=915])
+  const tapX = line.regImpulseTap === 'trunk' ? 772 : 915;
   const impRegPath = document.getElementById(`imp-reg-${sfx}`);
-  impRegPath.setAttribute('d', `M 595 ${yRegTop} L 595 ${yImpReg} L ${tapX} ${yImpReg} L ${tapX} ${yPipe}`);
+  impRegPath.setAttribute('d', `M 630 ${yRegTop} L 630 ${yImpReg} L ${tapX} ${yImpReg} L ${tapX} ${yPipe}`);
   const tapDot = document.getElementById(`tap-dot-reg-${sfx}`);
   tapDot.setAttribute('cx', String(tapX));
 
@@ -1027,9 +1045,6 @@ function renderTestbox() {
   }
 }
 
-/**
- * Pannello Inspector Contestuale con tutti i comandi per Regolatori Pilotati vs Azione Diretta
- */
 function renderInspector() {
   const id = state.selectedComp;
   const p = state.preset;
@@ -1045,12 +1060,11 @@ function renderInspector() {
   const lineCfg = isL2 ? p.line2 : p.line1;
   const lineLabel = isL2 ? '2ª Linea (Riserva)' : '1ª Linea (Principale)';
 
-  // 1. Regolatore Principale o i suoi rubinetti (Impulso / Alimentazione Pilota)
   if (id.startsWith('reg-') || id.startsWith('rreg-') || id.startsWith('palim-reg-')) {
     tagEl.textContent = `${isPiloted ? 'REGOLATORE PILOTATO (FAIL-CLOSE)' : 'AZIONE DIRETTA (FAIL-OPEN)'} · ${lineLabel}`;
     titleEl.textContent = lineCfg.regModel;
     descEl.textContent = isPiloted
-      ? 'Regolatore pilotato normalmente chiuso (Fail-Close). Il pilota riceve gas da monte tramite il preriduttore (Alim.Pilota) e modula la Pressione Motrice (Pmot) in base alla pressione letta dalla Presa d\'Impulso.'
+      ? 'Regolatore pilotato normalmente chiuso (Fail-Close). Il pilota riceve gas da monte tramite il preriduttore (Alim.Pil) e modula la Pressione Motrice (Pmot) in base alla pressione letta dalla Presa d\'Impulso.'
       : 'Regolatore ad azione diretta normalmente aperto (Fail-Open). La molla apre direttamente l\'otturatore e la pressione nella presa d\'impulso agisce sotto la membrana per chiudere.';
 
     const sensedImpulseP =
@@ -1118,7 +1132,7 @@ function renderInspector() {
         <div class="inspector-stat-row">
           <span>Stato Rubinetto Impulso:</span>
           <strong class="${line.regImpulseState === 'connected' ? 'status-ok' : 'status-warn'}">
-            ${line.regImpulseState === 'connected' ? 'IN LINEA (Lettura attiva)' : 'SCARICATO IN ATMOSFERA (0 bar → Spalanca)'}
+            ${line.regImpulseState === 'connected' ? 'IN LINEA (Lettura attiva)' : 'SCARICATO IN ATMOSFERA (0 → Spalanca)'}
           </strong>
         </div>
         ${impulseTapWarning}
@@ -1171,7 +1185,7 @@ function renderInspector() {
         `Presa d'impulso Regolatore ${isL2 ? 'L2' : 'L1'}: ${
           line.regImpulseState === 'connected'
             ? 'RICONNESSA IN LINEA'
-            : 'SCARICATA IN ATMOSFERA (0 bar) -> Regolatore spalancato per verifica Monitor!'
+            : 'SCARICATA IN ATMOSFERA (0) -> Regolatore spalancato per verifica Monitor!'
         }`,
         line.regImpulseState === 'connected' ? 'ok' : 'warn'
       );
@@ -1195,7 +1209,6 @@ function renderInspector() {
     return;
   }
 
-  // 2. Regolatore Monitor o i suoi rubinetti
   if (id.startsWith('mon-') || id.startsWith('rmon-') || id.startsWith('palim-mon-')) {
     tagEl.textContent = `REGOLATORE MONITOR IN SERIE · ${lineLabel}`;
     titleEl.textContent = lineCfg.monModel;
@@ -1265,7 +1278,6 @@ function renderInspector() {
     return;
   }
 
-  // 3. Valvole di linea V1, V2, BP
   if (id.startsWith('v1-') || id.startsWith('v2-') || id.startsWith('bp-')) {
     const isV1 = id.startsWith('v1-');
     const isV2 = id.startsWith('v2-');
@@ -1304,7 +1316,6 @@ function renderInspector() {
     return;
   }
 
-  // 4. Valvola di Blocco SB o rubinetto impulso blocco
   if (id.startsWith('sb-') || id.startsWith('rblk-')) {
     tagEl.textContent = `SICUREZZA POSITIVA · ${lineLabel}`;
     titleEl.textContent = `${lineCfg.blkModel} (${isL2 ? 'SB-L2' : 'SB-L1'})`;
@@ -1409,7 +1420,6 @@ function renderInspector() {
     return;
   }
 
-  // 5. Candela di Sfiato SF
   if (id.startsWith('sf-')) {
     tagEl.textContent = `SFIATO A CANDELA · ${lineLabel}`;
     titleEl.textContent = `Rubinetto di Sfiato Tronco SF-${isL2 ? 'L2' : 'L1'}`;
@@ -1439,7 +1449,6 @@ function renderInspector() {
     return;
   }
 
-  // 6. Valvola di Sfioro (VS)
   if (id === 'vs') {
     tagEl.textContent = 'PRESIDIO COLLETTORE VALLE';
     titleEl.textContent = 'Valvola di Sfioro (VS)';
@@ -1494,15 +1503,41 @@ function renderGuidedBanner() {
   document.getElementById('btn-next-step').disabled = idx === steps.length - 1;
 }
 
-/**
- * Inizializzazione Event Listeners
- */
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.svg-interactive').forEach((el) => {
     el.addEventListener('click', () => {
       state.selectedComp = el.id.replace('svg-btn-', '');
       renderAll();
     });
+  });
+
+  // Pulsanti Vista Linea (Entrambe / Solo L1 / Solo L2)
+  document.querySelectorAll('[data-view-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.viewMode = btn.getAttribute('data-view-mode');
+      if (state.viewMode === 'l1' && state.selectedComp.endsWith('l2')) {
+        state.selectedComp = 'reg-l1';
+      } else if (state.viewMode === 'l2' && state.selectedComp.endsWith('l1')) {
+        state.selectedComp = 'reg-l2';
+      }
+      renderAll();
+    });
+  });
+
+  // Pulsanti Zoom
+  document.getElementById('btn-zoom-in').addEventListener('click', () => {
+    state.zoomPercent = Math.min(200, state.zoomPercent + 20);
+    applyViewAndZoom();
+  });
+
+  document.getElementById('btn-zoom-out').addEventListener('click', () => {
+    state.zoomPercent = Math.max(80, state.zoomPercent - 20);
+    applyViewAndZoom();
+  });
+
+  document.getElementById('btn-zoom-reset').addEventListener('click', () => {
+    state.zoomPercent = 100;
+    applyViewAndZoom();
   });
 
   document.getElementById('preset-select').addEventListener('change', (e) => {
@@ -1618,7 +1653,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
-  // Simulazione Guasti differenziati (Sede Otturatore vs Ugello Pilota vs Rottura Membrana)
   document.getElementById('chk-fault-seat1').addEventListener('change', (e) => {
     state.faultSeat1Leak = e.target.checked;
     addLog(
@@ -1635,7 +1669,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.faultPilot1Leak = e.target.checked;
     addLog(
       state.faultPilot1Leak
-        ? 'ANOMALIA ATTIVATA: Trafilamento ugello Pilota L1 (SG alto con pilota attivo, ma si arresta se chiudi Alim.Pilota!).'
+        ? 'ANOMALIA ATTIVATA: Trafilamento ugello Pilota L1 (SG alto con pilota attivo, ma si arresta se chiudi Alim.Pil!).'
         : 'Ugello Pilota L1 ripristinato.',
       state.faultPilot1Leak ? 'warn' : 'ok'
     );
@@ -1655,7 +1689,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
-  // Dialog Manuale
   const manualDialog = document.getElementById('manual-dialog');
   document.getElementById('btn-open-manual').addEventListener('click', () => {
     manualDialog.showModal();
