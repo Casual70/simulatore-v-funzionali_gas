@@ -1,12 +1,10 @@
 /**
  * Simulatore Verifiche Funzionali Gas - Cabina REMI / GRF (UNI/PdR 39 - Tipo 3)
- * Gestione differenziata:
- * 1) Regolatori PILOTATI (Fail-Close, es. Pietro Fiorentini Aperflux 851 / Reflux 819 / Reval 182 Pilotato)
- *    con Preriduttore (R14), Rubinetto Alimentazione Pilota, Pressione Motrice (Pmot), Presa d'Impulso (Tronco vs Valle V2)
- *    e verifica SG / diagnostica differenziale Pilota vs Sede Otturatore.
- * 2) Regolatori ad AZIONE DIRETTA (Fail-Open, es. Pietro Fiorentini Dival 600 / Norval)
- *    con azione diretta molla/membrana, verifica SG per spinta diretta su membrana e prova Monitor.
- * 3) Modalità Visualizzazione: Doppia Linea, Focus Solo 1ª Linea, Focus Solo 2ª Linea + Zoom.
+ * - Manometro e Sfiato nel TRONCHETTO (tra Monitor e Regolatore Principale):
+ *   1) Se lavora il Regolatore Principale -> il Monitor è aperto -> nel Tronchetto c'è la Pressione di Monte (Pu).
+ *   2) Se lavora il Monitor (Regolatore spalancato) -> nel Tronchetto c'è la Pressione di Valle (Pm).
+ *   3) Con Regolatore Principale completamente chiuso -> usando lo Sfiato del Tronchetto si verifica la tenuta / chiusura (SG) del Monitor!
+ * - Regolatori Pilotati (Fail-Close) vs Regolatori ad Azione Diretta (Fail-Open).
  */
 
 const PRESETS = {
@@ -15,7 +13,7 @@ const PRESETS = {
     arch: 'PILOTED',
     name: 'Cabina REMI Pilotata [FAIL-CLOSE] (Aperflux 851 + Pilota 204/A + Preriduttore R14)',
     archSubtitle:
-      'Architettura: <strong>REGOLATORI PILOTATI (Normalmente Chiusi / Fail-Close)</strong> — Richiedono Alimentazione Pilota (Pmot) per aprire; la presa d\'impulso comanda la modulazione e l\'SG',
+      'Architettura: <strong>REGOLATORI PILOTATI (Fail-Close)</strong> — Osserva il Manometro TRONCHETTO (tra Monitor e Regolatore): segna Pu (24 bar) se lavora il Regolatore, o Pd (1,65 bar) se lavora il Monitor!',
     unit: 'bar',
     decimals: 2,
     pu: 24.0,
@@ -54,7 +52,7 @@ const PRESETS = {
     arch: 'PILOTED',
     name: 'GRF Cittadino Pilotato [FAIL-CLOSE] (Reval 182 Pilotato + Monitor)',
     archSubtitle:
-      'Architettura: <strong>GRF CON REGOLATORI PILOTATI (Fail-Close)</strong> — Bassa pressione con altissima precisione (AC 2,5 / SG 5) governata da pilota e presa d\'impulso',
+      'Architettura: <strong>GRF CON REGOLATORI PILOTATI (Fail-Close)</strong> — Monte Pu = 5,0 bar nel Tronchetto quando lavora il Regolatore; scende a 26,0 mbar se subentra il Monitor',
     unit: 'mbar',
     decimals: 1,
     pu: 5.0,
@@ -93,7 +91,7 @@ const PRESETS = {
     arch: 'DIRECT',
     name: 'GRF Azione Diretta [FAIL-OPEN] (Dival 600 / Norval Molla Diretta)',
     archSubtitle:
-      'Architettura: <strong>REGOLATORI AD AZIONE DIRETTA (Normalmente Aperti / Fail-Open)</strong> — Assenza di pilota: la molla apre l\'otturatore e la pressione nella presa d\'impulso comprime direttamente la membrana per chiudere (SG)',
+      'Architettura: <strong>REGOLATORI AD AZIONE DIRETTA (Fail-Open)</strong> — Assenza di pilota: la molla apre l\'otturatore e la pressione nella presa d\'impulso comprime direttamente la membrana',
     unit: 'mbar',
     decimals: 1,
     pu: 1.5,
@@ -130,293 +128,247 @@ const PRESETS = {
 };
 
 const GUIDED_PROCEDURES = {
+  'guided-tronchetto': [
+    {
+      title: 'Passo 1 (Tronchetto): Diagnosi a Colpo d\'Occhio — Regolatore vs Monitor in Lavoro',
+      desc: 'In marcia normale il Monitor L1 è completamente aperto e chi lamina il gas è il Regolatore Principale L1: perciò il manometro TRONCHETTO (tra Monitor e Regolatore) segna la Pressione di Monte (Pu = 24,0 bar). Ora simula il subentro del Monitor: clicca su REG. PRINC. L1 e premi "Scarica Impulso a 0 (Prova Monitor)" (oppure spunta "Simula rottura membrana Regolatore L1") e osserva il manometro TRONCHETTO!',
+      check: (s) => {
+        if (s.l1.activeRole !== 'MONITOR_WORK') {
+          return {
+            ok: false,
+            msg: 'Manda in lavoro il Monitor L1: clicca su REG. PRINC. L1 e premi "Scarica Impulso a 0 (Prova Monitor)".'
+          };
+        }
+        return {
+          ok: true,
+          msg: `Visto? Appena il Regolatore Principale si spalanca e inizia a lavorare il Monitor, la pressione nel TRONCHETTO crolla da Pu (${s.preset.pu.toFixed(
+            1
+          )} bar) alla Pressione di Valle del Monitor (${formatPressure(s.l1.pTrunk, s.preset)})!`
+        };
+      }
+    },
+    {
+      title: 'Passo 2 (Tronchetto): Chiusura Totale del Regolatore Principale L1 per Isolare il Tronchetto a Valle',
+      desc: 'Ora vogliamo usare lo Sfiato del Tronchetto per verificare la tenuta del Monitor! Prima dobbiamo chiudere completamente il Regolatore Principale L1: 1) Riconnetti l\'impulso di REG. PRINC. L1 in Linea; 2) Chiudi la valvola di valle V2-L1 (e assicurati che SF-L1 sia chiuso, oppure su un Regolatore Pilotato chiudi "Alim.Pil" di REG. PRINC. L1 per forzarlo in Fail-Close ermetico).',
+      check: (s) => {
+        if (s.l1.regImpulseState !== 'connected') {
+          return { ok: false, msg: 'Riconnetti prima l\'impulso di REG. PRINC. L1 in Linea.' };
+        }
+        const regCompletelyClosed =
+          (!s.l1.v2Open && !s.l1.sfOpen && s.l1.regImpulseTap === 'trunk') ||
+          (s.preset.arch === 'PILOTED' && !s.l1.regPilotSupplyOpen);
+        if (!regCompletelyClosed) {
+          return {
+            ok: false,
+            msg: 'Per chiudere completamente il Regolatore Principale L1: chiudi Alim.Pil di REG. PRINC. L1 (Fail-Close), oppure chiudi V2-L1 con Imp.Reg su MONTE V2 e SF-L1 chiuso.'
+          };
+        }
+        return {
+          ok: true,
+          msg: 'Perfetto! Il Regolatore Principale L1 è ora completamente chiuso e fa da tenuta stagna a valle del Tronchetto.'
+        };
+      }
+    },
+    {
+      title: 'Passo 3 (Tronchetto): Apertura Sfiato del Tronchetto per Scaricare Pu e Portare in Regolazione il Monitor',
+      desc: 'Con il Regolatore Principale chiuso, nel Tronchetto è rimasta intrappolata la Pressione di Monte (Pu). Clicca sul componente "Sfiato Tronch." / "TRONCHETTO" (tra Monitor e Regolatore L1) e premi "Apri Sfiato Tronchetto": la pressione nel tronchetto scenderà da Pu fino alla taratura del Monitor (Pm)!',
+      check: (s) => {
+        if (!s.l1.sfIntOpen) {
+          return {
+            ok: false,
+            msg: 'Clicca su "TRONCHETTO / Sfiato Tronch." (tra Monitor L1 e Regolatore L1) e apri lo Sfiato del Tronchetto.'
+          };
+        }
+        return {
+          ok: true,
+          msg: `Ottimo! Aprendo lo Sfiato del Tronchetto con Regolatore chiuso, hai scaricato la Pu e il Monitor sta regolando il tronchetto a ${formatPressure(
+            s.l1.pMidDisplay,
+            s.preset
+          )}.`
+        };
+      }
+    },
+    {
+      title: 'Passo 4 (Tronchetto): Chiusura Sfiato del Tronchetto e Verifica Tenuta / SG del Monitor',
+      desc: 'Ora richiudi lo "Sfiato Tronchetto" (con Regolatore Principale sempre chiuso) e osserva il manometro TRONCHETTO: la pressione si stabilizza alla pressione di chiusura (SG) del Monitor senza risalire a Pu! Prova anche a spuntare "Simula trafilamento sede Otturatore MONITOR L1" per vedere come il manometro del tronchetto smaschera subito un Monitor che non tiene!',
+      check: (s) => {
+        if (s.l1.sfIntOpen) {
+          return { ok: false, msg: 'Richiudi ora lo Sfiato del Tronchetto per verificare la tenuta in chiusura del Monitor.' };
+        }
+        if (s.faultMonSeat1Leak) {
+          return {
+            ok: true,
+            msg: 'Con il trafilamento Monitor attivo vedi infatti il manometro TRONCHETTO risalire a Pu (24 bar)! Hai padroneggiato la verifica della tenuta del Monitor tramite il tronchetto.'
+          };
+        }
+        return {
+          ok: true,
+          msg: `Verifica Tenuta Monitor completata! Con Regolatore chiuso e Sfiato Tronchetto chiuso, il manometro TRONCHETTO resta stabile a ${formatPressure(
+            s.l1.pMidDisplay,
+            s.preset
+          )} (non risale a ${s.preset.pu.toFixed(1)} bar), confermando la perfetta tenuta del Monitor!`
+        };
+      }
+    }
+  ],
   'guided-piloted-sg': [
     {
-      title: 'Passo 1 (Reg. Pilotato): Osserva l\'effetto della Presa d\'Impulso a Valle di V2 durante lo Scambio Linea',
-      desc: 'In una cabina con Regolatori Pilotati, spesso la presa d\'impulso legge il Collettore a VALLE di V2. Chiudi ora la valvola di valle V2-L1: vedrai che il collettore passa sulla 2ª Linea, ma poiché l\'impulso del pilota L1 legge ancora il collettore (pressione inferiore al set di L1), il pilota L1 NON va in chiusura SG bensì SPALANCA il regolatore L1 (P tronco L1 sale al Monitor)!',
+      title: 'Passo 1 (Reg. Pilotato): Effetto della Presa d\'Impulso a Valle di V2 e Lettura del Tronchetto',
+      desc: 'Chiudi la valvola di valle V2-L1 lasciando la presa d\'impulso di REG. PRINC. L1 su COLLETTORE (valle V2). Poiché il collettore scende alla pressione della 2ª Linea, il pilota L1 legge una pressione inferiore al proprio set e SPALANCA il regolatore L1: guarda il manometro TRONCHETTO scendere da Pu (24 bar) a 1,65 bar perché è entrato il Monitor!',
       check: (s) => {
         if (s.preset.arch !== 'PILOTED') {
           return { ok: false, msg: 'Seleziona una configurazione Pilotata [FAIL-CLOSE] in alto a sinistra.' };
         }
         if (s.l1.v2Open) {
-          return { ok: false, msg: 'Clicca sulla valvola di valle V2-L1 e premi "Chiudi Valvola" per isolare la Linea 1.' };
+          return { ok: false, msg: 'Clicca sulla valvola di valle V2-L1 e premi "Chiudi Valvola".' };
         }
         return {
           ok: true,
-          msg: `Esatto! Con V2-L1 chiusa e presa d'impulso su COLLETTORE (valle V2), il pilota L1 legge ${formatPressure(
-            s.pdManifold,
+          msg: `Esatto! Con V2-L1 chiusa e impulso a valle di V2, il Regolatore L1 si è spalancato e il manometro TRONCHETTO è sceso da 24 bar a ${formatPressure(
+            s.l1.pMidDisplay,
             s.preset
-          )} (< ${formatPressure(s.l1.regSet, s.preset)}), quindi manda la massima Pmot e fa salire il tronco L1 fino al Monitor (${formatPressure(
-            s.l1.pTrunk,
-            s.preset
-          )})!`
+          )} (sta tenendo il Monitor)!`
         };
       }
     },
     {
-      title: 'Passo 2 (Reg. Pilotato): Commutazione Presa d\'Impulso sul TRONCO e Innesco con Sfiato SF-L1',
-      desc: 'Per verificare la Sovrapressione di Chiusura (SG) del regolatore pilotato L1: 1) Clicca su REG. PRINC. L1 (o su Imp.Reg) e commuta il "Punto di Presa Impulso" su TRONCO (a monte di V2); 2) Apri lo sfiato a candela SF-L1 per scaricare l\'eccesso accumulato e osservare il pilota modulare al set-point.',
+      title: 'Passo 2 (Reg. Pilotato): Commutazione Presa d\'Impulso a MONTE di V2 e Sfiato SF-L1',
+      desc: 'Ora commuta il Punto di Presa Impulso di REG. PRINC. L1 su "MONTE V2 (Valle Regolatore)" e apri lo sfiato a candela SF-L1: il Regolatore Principale L1 riprende la regolazione, il Monitor torna tutto aperto e il manometro TRONCHETTO risale a Pu (24 bar)!',
       check: (s) => {
-        if (s.l1.v2Open) {
-          return { ok: false, msg: 'Mantieni V2-L1 chiusa.' };
-        }
-        if (s.l1.regImpulseTap !== 'trunk') {
+        if (s.l1.v2Open || s.l1.regImpulseTap !== 'trunk' || !s.l1.sfOpen) {
           return {
             ok: false,
-            msg: 'Clicca su REG. PRINC. L1 e imposta il Punto di Presa Impulso su "TRONCO (a monte di V2)".'
-          };
-        }
-        if (!s.l1.sfOpen) {
-          return {
-            ok: false,
-            msg: 'Ora apri lo sfiato a candela SF-L1 per far scendere la pressione del tronco al set-point del regolatore L1.'
+            msg: 'Imposta il Punto di Presa Impulso di REG. PRINC. L1 su "MONTE V2" e apri lo sfiato SF-L1.'
           };
         }
         return {
           ok: true,
-          msg: `Perfetto! Con l'impulso sul TRONCO e SF-L1 aperto, il pilota modula la pressione motrice (Pmot = ${formatPressure(
-            s.l1.regPmot,
-            s.preset
-          )}) e mantiene il tronco a ${formatPressure(s.l1.pTrunk, s.preset)}.`
+          msg: `Perfetto! Ora sta lavorando di nuovo il Regolatore Principale L1 (manometro TRONCHETTO tornato a ${s.preset.pu.toFixed(
+            1
+          )} bar e P VALLE L1 a ${formatPressure(s.l1.pTrunk, s.preset)}).`
         };
       }
     },
     {
-      title: 'Passo 3 (Reg. Pilotato): Chiusura Sfiato SF-L1 e Misura dell\'SG (Azzeramento Pmot)',
-      desc: 'Richiudi ora lo sfiato a candela SF-L1 per portare la portata a ZERO. Osserva cosa fa il pilota: appena la pressione nel tronco sale del piccolo SG, la membrana del pilota chiude l\'ugello e scarica la pressione motrice (Pmot scende uguale a P tronco), facendo chiudere ermeticamente l\'otturatore principale!',
+      title: 'Passo 3 (Reg. Pilotato): Chiusura Sfiato SF-L1 e Misura dell\'SG',
+      desc: 'Richiudi lo sfiato SF-L1 per verificare l\'SG del Regolatore Principale L1 sul manometro P VALLE L1 (e se vuoi verificare anche la tenuta del Monitor, usa poi lo Sfiato del Tronchetto come visto nella procedura dedicata!).',
       check: (s) => {
         if (s.l1.v2Open || s.l1.regImpulseTap !== 'trunk' || s.l1.sfOpen) {
-          return {
-            ok: false,
-            msg: 'Assicurati che V2-L1 sia chiusa, l\'impulso sia su TRONCO e richiudi lo sfiato a candela SF-L1.'
-          };
+          return { ok: false, msg: 'Richiudi lo sfiato SF-L1 mantenendo V2-L1 chiusa.' };
         }
         return {
           ok: true,
-          msg: `SG Regolatore Pilotato verificato! P tronco stabile a ${formatPressure(
+          msg: `SG Regolatore Pilotato verificato: P VALLE L1 stabile a ${formatPressure(
             s.l1.pTrunk,
             s.preset
-          )} e pressione motrice scaricata (Pmot = ${formatPressure(s.l1.regPmot, s.preset)} -> spinta motrice = 0).`
-        };
-      }
-    },
-    {
-      title: 'Passo 4 (Reg. Pilotato): Diagnostica Differenziale con Rubinetto Alimentazione Pilota (Fail-Close)',
-      desc: 'Nei regolatori pilotati, se trovi un SG fuori tolleranza, come capisci se trafila l\'ugello del pilota o la sede dell\'otturatore principale? 1) Spunta "Simula trafilamento ugello Pilota L1" nel pannello in basso a destra; 2) Chiudi il rubinetto "Alim.Pil" (Alimentazione Pilota OFF): vedrai che il regolatore va in Fail-Close e la pressione non sale più!',
-      check: (s) => {
-        if (!s.faultPilot1Leak) {
-          return {
-            ok: false,
-            msg: 'Attiva la casella "Simula trafilamento ugello Pilota L1 (solo Reg. Pilotati)" nel pannello a destra.'
-          };
-        }
-        if (s.l1.regPilotSupplyOpen) {
-          return {
-            ok: false,
-            msg: 'Con il trafilamento pilota attivo la pressione è salita! Ora clicca su REG. PRINC. L1 (o Alim.Pil) e CHIUDI l\'Alimentazione Pilota.'
-          };
-        }
-        return {
-          ok: true,
-          msg: 'Bravissimo! Chiudendo l\'alimentazione pilota (Fail-Close), l\'otturatore principale ha chiuso ermeticamente, dimostrando che il trafilamento proveniva dal pilota e non dalla sede principale!'
-        };
-      }
-    },
-    {
-      title: 'Passo 5 (Reg. Pilotato): Come mandare in lavoro il Monitor su un Regolatore Pilotato',
-      desc: 'Togli il guasto al pilota, RIAPRI l\'Alimentazione Pilota (Alim.Pil ON) e apri lo sfiato SF-L1. Su un regolatore pilotato per provare il Monitor devi SCARICARE la Presa d\'Impulso del Regolatore L1 ("Scarica Impulso a 0"). Così il pilota sente 0, manda la massima Pmot e spalanca il regolatore, facendo entrare il Monitor L1!',
-      check: (s) => {
-        if (s.faultPilot1Leak) {
-          return { ok: false, msg: 'Disattiva prima la casella "Simula trafilamento ugello Pilota L1".' };
-        }
-        if (!s.l1.regPilotSupplyOpen) {
-          return {
-            ok: false,
-            msg: 'Riapri il rubinetto Alimentazione Pilota (Alim.Pil ON): senza alimentazione motrice il regolatore pilotato rimane chiuso!'
-          };
-        }
-        if (!s.l1.sfOpen) {
-          return { ok: false, msg: 'Apri lo sfiato a candela SF-L1 per dare portata di regolazione al Monitor.' };
-        }
-        if (s.l1.regImpulseState !== 'vented') {
-          return {
-            ok: false,
-            msg: 'Seleziona REG. PRINC. L1 e clicca su "Scarica Impulso a 0 (Prova Monitor)".'
-          };
-        }
-        return {
-          ok: true,
-          msg: `Eccellente! Con l'impulso scaricato a 0 e alimentazione pilota attiva, Pmot è salita al massimo (${formatPressure(
-            s.l1.regPmot,
-            s.preset
-          )}), il Regolatore L1 si è spalancato e il Monitor L1 governa il tronco a ${formatPressure(s.l1.pTrunk, s.preset)}!`
+          )} e Pmot scaricata (${formatPressure(s.l1.regPmot, s.preset)}).`
         };
       }
     }
   ],
   'guided-direct-sg': [
     {
-      title: 'Passo 1 (Azione Diretta): Chiusura V2-L1 e Verifica SG per compressione diretta membrana/molla',
-      desc: 'Nel gruppo ad Azione Diretta (Dival 600 / Norval, Fail-Open) non esiste pilota né alimentazione motrice: la presa d\'impulso è sul tronco e agisce direttamente sotto la membrana contro la molla di taratura. Chiudi la valvola di valle V2-L1 (con SF-L1 chiuso) e osserva l\'SG più pronunciato (+2,2 mbar) necessario per vincere fisicamente la molla.',
+      title: 'Passo 1 (Azione Diretta): Chiusura V2-L1 e Verifica SG',
+      desc: 'Nel gruppo ad Azione Diretta (Dival 600 / Norval, Fail-Open) chiudi la valvola di valle V2-L1 (con SF-L1 chiuso) e osserva l\'SG (+2,2 mbar) sul manometro P VALLE L1 mentre il manometro TRONCHETTO segna la pressione di monte Pu (1,5 bar).',
       check: (s) => {
         if (s.preset.arch !== 'DIRECT') {
           return { ok: false, msg: 'Seleziona la configurazione "GRF Azione Diretta [FAIL-OPEN]" in alto a sinistra.' };
         }
         if (s.l1.v2Open || s.l1.sfOpen) {
-          return { ok: false, msg: 'Chiudi la valvola di valle V2-L1 e assicurati che lo sfiato SF-L1 sia chiuso.' };
+          return { ok: false, msg: 'Chiudi V2-L1 e assicurati che SF-L1 sia chiuso.' };
         }
         return {
           ok: true,
-          msg: `Verifica SG Azione Diretta completata: la pressione nel tronco è salita da ${formatPressure(
-            s.l1.regSet,
-            s.preset
-          )} a ${formatPressure(s.l1.pTrunk, s.preset)} comprimendo direttamente la molla dell'otturatore.`
+          msg: `SG Azione Diretta verificato: P VALLE L1 a ${formatPressure(s.l1.pTrunk, s.preset)} e TRONCHETTO a ${
+            s.preset.pu
+          } bar.`
         };
       }
     },
     {
-      title: 'Passo 2 (Azione Diretta): Verifica del Monitor per Fail-Open (Scarico Presa d\'Impulso)',
-      desc: 'In un regolatore ad Azione Diretta (Fail-Open), la molla spinge sempre per aprire. Apri lo sfiato SF-L1 e scarica la Presa d\'Impulso del Regolatore L1 ("Scarica Impulso a 0"): mancando la pressione sotto la membrana, la molla spalanca immediatamente l\'otturatore e il Monitor entra in regolazione.',
+      title: 'Passo 2 (Azione Diretta): Prova del Monitor e Osservazione del Manometro TRONCHETTO',
+      desc: 'Apri lo sfiato SF-L1 e scarica la Presa d\'Impulso di REG. PRINC. L1 ("Scarica Impulso a 0"): la molla spalanca il regolatore principale, il Monitor entra in regolazione e il manometro TRONCHETTO scende da 1,5 bar a 27,0 mbar!',
       check: (s) => {
         if (s.l1.v2Open || !s.l1.sfOpen || s.l1.regImpulseState !== 'vented') {
           return {
             ok: false,
-            msg: 'Con V2-L1 chiusa, apri lo sfiato SF-L1 e clicca su "Scarica Impulso a 0 (Prova Monitor)" su REG. PRINC. L1.'
+            msg: 'Con V2-L1 chiusa, apri SF-L1 e clicca su "Scarica Impulso a 0 (Prova Monitor)" su REG. PRINC. L1.'
           };
         }
         return {
           ok: true,
-          msg: `Perfetto! Il regolatore ad azione diretta si è portato in Fail-Open per spinta della molla e il Monitor regola il tronco a ${formatPressure(
+          msg: `Perfetto! Sia il manometro TRONCHETTO che P VALLE L1 segnano ora ${formatPressure(
             s.l1.pTrunk,
             s.preset
-          )}.`
+          )}: sta lavorando il Monitor!`
         };
       }
     }
   ],
   'guided-full': [
     {
-      title: 'Passo 1: Scambio Linea (Isolamento V2-L1 e Presa di Carico 2ª Linea)',
-      desc: 'Assicurati che la Seconda Linea (L2) sia pronta e chiudi la valvola di valle V2-L1. Se stai operando su un Regolatore Pilotato con presa d\'impulso su Collettore, ricordati anche di commutare il Punto di Presa Impulso di REG. PRINC. L1 su "TRONCO (a monte di V2)".',
+      title: 'Passo 1: Scambio Linea (Isolamento V2-L1 e Commutazione Impulso a Monte V2)',
+      desc: 'Chiudi V2-L1 per passare il carico sulla 2ª Linea e, se il regolatore è pilotato, commuta il Punto di Presa Impulso di REG. PRINC. L1 su "MONTE V2 (Valle Regolatore)".',
       check: (s) => {
-        if (s.l1.v2Open) {
-          return { ok: false, msg: 'Chiudi la valvola di intercettazione di valle V2-L1.' };
+        if (s.l1.v2Open || s.l1.regImpulseTap !== 'trunk') {
+          return { ok: false, msg: 'Chiudi V2-L1 e imposta il Punto di Presa Impulso di REG. PRINC. L1 su "MONTE V2".' };
         }
-        if (s.l1.regImpulseTap !== 'trunk') {
-          return {
-            ok: false,
-            msg: 'Poiché il regolatore è pilotato, commuta il Punto di Presa Impulso di REG. PRINC. L1 su "TRONCO (a monte di V2)" affinché non legga la pressione inferiore della 2ª Linea!'
-          };
-        }
-        return { ok: true, msg: 'Seconda Linea in erogazione regolare e tronco L1 correttamente isolato con impulso sul tronco!' };
+        return { ok: true, msg: 'Scambio linea eseguito correttamente!' };
       }
     },
     {
-      title: 'Passo 2: Verifica Chiusura Statica (SG) del Regolatore Principale L1',
-      desc: 'Con V2-L1 chiusa e impulso sul tronco, se il tronco era salito di pressione apri e richiudi lo sfiato SF-L1. Verifica con SF-L1 chiuso che la pressione si stabilizzi al valore di chiusura (SG) senza trafilamenti.',
+      title: 'Passo 2: Verifica SG Regolatore L1 e Tenuta Monitor nel Tronchetto',
+      desc: 'Verifica che P VALLE L1 con SF-L1 chiuso sia stabile all\'SG del Regolatore. Poi apri e richiudi lo "Sfiato Tronch." (nel Tronchetto tra Monitor e Regolatore chiuso) per verificare sul manometro TRONCHETTO anche la chiusura e tenuta del Monitor L1!',
       check: (s) => {
-        if (s.l1.v2Open || s.l1.sfOpen || s.l1.regImpulseTap !== 'trunk') {
-          return { ok: false, msg: 'Mantieni V2-L1 chiusa, impulso su TRONCO e sfiato SF-L1 chiuso.' };
-        }
-        if (s.l1.pTrunk > s.l1.regSet + s.preset.sgAllowance + 0.05) {
+        if (s.l1.v2Open || s.l1.sfOpen || s.l1.sfIntOpen || !s.l1.testedMonitorLockup) {
           return {
             ok: false,
-            msg: 'La pressione nel tronco è rimasta alta: apri per un secondo lo sfiato SF-L1 e poi richiudilo per far assestare il regolatore al suo SG.'
+            msg: 'Con V2-L1 e SF-L1 chiusi, clicca su "TRONCHETTO / Sfiato Tronch.", apri lo Sfiato del Tronchetto e poi richiudilo per testare la tenuta del Monitor!'
           };
         }
         return {
           ok: true,
-          msg: `SG conforme: P tronco L1 stabile a ${formatPressure(s.l1.pTrunk, s.preset)}.`
+          msg: `Sia l'SG del Regolatore (${formatPressure(s.l1.pTrunk, s.preset)}) sia la tenuta del Monitor nel Tronchetto (${formatPressure(
+            s.l1.pMidDisplay,
+            s.preset
+          )}) sono stati verificati!`
         };
       }
     },
     {
-      title: 'Passo 3: Verifica Funzionale del Monitor L1',
-      desc: 'Apri lo sfiato a candela SF-L1 e manda in apertura il Regolatore Principale L1 scaricando la sua presa d\'impulso ("Scarica Impulso a 0", mantenendo aperta l\'alimentazione pilota se pilotato) per leggere la taratura del Monitor L1.',
-      check: (s) => {
-        if (s.l1.v2Open || !s.l1.sfOpen || s.l1.regImpulseState !== 'vented' || !s.l1.regPilotSupplyOpen) {
-          return {
-            ok: false,
-            msg: 'Apri SF-L1, assicurati che Alim.Pil sia attiva e clicca su "Scarica Impulso a 0 (Prova Monitor)" su REG. PRINC. L1.'
-          };
-        }
-        return {
-          ok: true,
-          msg: `Monitor L1 verificato con successo: regola il tronco a ${formatPressure(s.l1.pTrunk, s.preset)}.`
-        };
-      }
-    },
-    {
-      title: 'Passo 4: Verifica Scatto OPSO (Max) e UPSO (Min) del Blocco SB-L1',
-      desc: 'Riconnetti l\'impulso di REG. PRINC. L1 in LINEA e chiudi SF-L1. Poi metti il rubinetto Imp.Blk di SB-L1 in posizione TEST, collega la Cassettina di Prova a SB-L1 e verifica lo scatto sia per Massima (OPSO) sia per Minima (UPSO).',
+      title: 'Passo 3: Verifica Scatto OPSO (Max) e UPSO (Min) del Blocco SB-L1',
+      desc: 'Metti il rubinetto Imp.Blk di SB-L1 in posizione TEST, collega la Cassettina di Prova a SB-L1 e fai scattare il blocco sia per Massima (OPSO) sia per Minima (UPSO).',
       check: (s) => {
         if (!s.l1.testedMaxTrip || !s.l1.testedMinTrip) {
-          return {
-            ok: false,
-            msg: 'Metti Imp.Blk su TEST, collega la Cassettina a SB-L1 e fai scattare il blocco sia per Massima (OPSO) sia per Minima (UPSO).'
-          };
+          return { ok: false, msg: 'Esegui entrambi i test di scatto OPSO e UPSO su SB-L1 con la Cassettina di Prova.' };
         }
-        return {
-          ok: true,
-          msg: `Scatti OPSO (${s.l1.lastMaxTripVal}) e UPSO (${s.l1.lastMinTripVal}) certificati!`
-        };
+        return { ok: true, msg: `Scatti OPSO (${s.l1.lastMaxTripVal}) e UPSO (${s.l1.lastMinTripVal}) certificati!` };
       }
     },
     {
-      title: 'Passo 5: Riarmo e Ritorno in Servizio sulla 1ª Linea',
-      desc: 'Riporta il rubinetto Imp.Blk in LINEA, riarma la leva del blocco SB-L1 e riapri la valvola di valle V2-L1 per riportare la Linea 1 al comando e la Seconda Linea in stand-by automatico.',
+      title: 'Passo 4: Riarmo Blocco SB-L1 e Ritorno in Servizio sulla 1ª Linea',
+      desc: 'Riporta Imp.Blk in LINEA, riarma SB-L1 e riapri V2-L1. Osserva il manometro TRONCHETTO tornare a Pu (24 bar) confermando che il Regolatore Principale L1 è tornato al comando.',
       check: (s) => {
-        if (s.l1.blkImpulseMode !== 'line' || !s.l1.sbArmed || !s.l1.v1Open || !s.l1.v2Open || s.l1.sfOpen || s.l1.regImpulseState !== 'connected') {
-          return {
-            ok: false,
-            msg: 'Verifica che Imp.Blk e Imp.Reg siano connessi in LINEA, SF-L1 sia chiuso, SB-L1 sia ARMATO e V2-L1 sia APERTA.'
-          };
+        if (s.l1.blkImpulseMode !== 'line' || !s.l1.sbArmed || !s.l1.v2Open) {
+          return { ok: false, msg: 'Riporta Imp.Blk in LINEA, riarma SB-L1 e riapri V2-L1.' };
         }
-        return {
-          ok: true,
-          msg: 'VERIFICA FUNZIONALE COMPLETA TERMINATA! Linea 1 regolarmente in servizio e Seconda Linea armata in stand-by.'
-        };
-      }
-    }
-  ],
-  'guided-block-l2': [
-    {
-      title: 'Passo 1: Isolamento Presa Impulso Blocco 2ª Linea (SB-L2)',
-      desc: 'Imposta il rubinetto Imp.Blk della Seconda Linea (SB-L2) su TEST e collega la Cassettina di Prova a "Presa Impulso Blocco SB-L2 (2ª Linea)".',
-      check: (s) => {
-        if (s.l2.blkImpulseMode !== 'test' || s.testbox.target !== 'blk-l2') {
-          return { ok: false, msg: 'Imposta Imp.Blk L2 su TEST e collega la Cassettina a SB-L2.' };
-        }
-        return { ok: true, msg: 'Presa impulso SB-L2 isolata e pronta al test.' };
-      }
-    },
-    {
-      title: 'Passo 2: Test Scatto OPSO e UPSO su SB-L2 e Riarmo Finale',
-      desc: 'Fai scattare SB-L2 per Massima e per Minima con la pompa di prova, poi riporta Imp.Blk L2 in LINEA e riarma SB-L2.',
-      check: (s) => {
-        if (!s.l2.testedMaxTrip || !s.l2.testedMinTrip) {
-          return { ok: false, msg: 'Esegui prima entrambi gli scatti per Massima (OPSO) e Minima (UPSO) con la pompa.' };
-        }
-        if (s.l2.blkImpulseMode !== 'line' || !s.l2.sbArmed) {
-          return { ok: false, msg: 'Ora riporta Imp.Blk L2 in LINEA e riarma la leva di SB-L2.' };
-        }
-        return { ok: true, msg: 'Blocco 2ª Linea verificato e riarmato in pronta riserva!' };
+        return { ok: true, msg: 'VERIFICA FUNZIONALE COMPLETA TERMINATA CON SUCCESSO!' };
       }
     }
   ]
 };
 
-// Stato globale
 let state = {
   presetKey: 'remi-piloted',
   preset: PRESETS['remi-piloted'],
   mode: 'free',
-  viewMode: 'both', // 'both' | 'l1' | 'l2'
-  zoomPercent: 100, // 80 .. 200
+  viewMode: 'both',
+  zoomPercent: 100,
   guidedStepIndex: 0,
-  selectedComp: 'reg-l1',
+  selectedComp: 'sfint-l1',
   flowDemand: 450,
   faultSeat1Leak: false,
+  faultMonSeat1Leak: false,
   faultPilot1Leak: false,
   faultRupture1: false,
   pdManifold: 1.50,
@@ -441,20 +393,31 @@ function createLineState(cfg, preset) {
     blkImpulseMode: 'line',
 
     regPilotSupplyOpen: true,
-    regImpulseTap: preset.defaultImpulseTap, // 'trunk' | 'manifold'
-    regImpulseState: 'connected', // 'connected' | 'vented'
+    regImpulseTap: preset.defaultImpulseTap,
+    regImpulseState: 'connected',
     regPmot: preset.arch === 'PILOTED' ? cfg.regSet + 0.6 : 0,
 
     monPilotSupplyOpen: true,
     monImpulseState: 'connected',
     monPmot: preset.arch === 'PILOTED' ? preset.pilotSupplyNominal : 0,
 
+    // Sfiato nel TRONCHETTO tra Monitor e Regolatore (sfIntOpen) e Sfiato Valle Linea (sfOpen)
+    sfIntOpen: false,
     sfOpen: false,
+    tronchettoDepressurized: false, // Memoria se il tronchetto è stato scaricato con Sfiato Tronchetto a Regolatore chiuso
+    testedMonitorLockup: false,
+
     regSet: cfg.regSet,
     monSet: cfg.monSet,
     blkMax: cfg.blkMax,
     blkMin: cfg.blkMin,
-    pTrunk: cfg.regSet,
+
+    // pMidBar = Pressione nel Tronchetto in bar (quando = Pu) oppure pMidDisplay nell'unità del preset (quando laminata dal Monitor)
+    pMidIsPu: true, // true = nel tronchetto c'è Pu (Monitor aperto, lavora il Regolatore); false = nel tronchetto c'è pressione ridotta dal Monitor!
+    pMidDisplay: preset.pu, // Valore numerico mostrato sul manometro TRONCHETTO
+    pMidUnit: 'bar',
+
+    pTrunk: cfg.regSet, // Pressione a valle del Regolatore Principale (prima di V2)
     trappedTrunkP: cfg.regSet,
     activeRole: 'ACTIVE',
     testedMaxTrip: false,
@@ -470,6 +433,13 @@ function formatPressure(val, preset) {
 
 function formatShort(val, preset) {
   return Number(val).toFixed(preset.decimals);
+}
+
+function formatTronchetto(line, preset) {
+  if (line.pMidIsPu) {
+    return `${Number(line.pMidDisplay).toFixed(1).replace('.', ',')} bar (Pu)`;
+  }
+  return `${Number(line.pMidDisplay).toFixed(preset.decimals).replace('.', ',')} ${preset.unit}`;
 }
 
 function addLog(message, type = 'info') {
@@ -494,6 +464,7 @@ function initPlant(presetKey) {
   state.preset = preset;
   state.flowDemand = preset.nominalFlow;
   state.faultSeat1Leak = false;
+  state.faultMonSeat1Leak = false;
   state.faultPilot1Leak = false;
   state.faultRupture1 = false;
   state.vsSet = preset.vsSet;
@@ -515,6 +486,7 @@ function initPlant(presetKey) {
 
   document.getElementById('testbox-target').value = 'none';
   document.getElementById('chk-fault-seat1').checked = false;
+  document.getElementById('chk-fault-monseat1').checked = false;
   document.getElementById('chk-fault-pilot1').checked = false;
   document.getElementById('chk-fault-pilot1').disabled = preset.arch !== 'PILOTED';
   document.getElementById('chk-fault-rupture1').checked = false;
@@ -525,7 +497,8 @@ function initPlant(presetKey) {
 }
 
 /**
- * Motore Fisico / Pneumatico (Entrambe le linee sono sempre calcolate in tempo reale anche in vista singola linea)
+ * Motore Fisico / Pneumatico con calcolo esplicito del TRONCHETTO (tra Monitor e Regolatore)
+ * e del TRONCO DI VALLE (tra Regolatore e V2)
  */
 function recalculatePhysics() {
   const p = state.preset;
@@ -561,6 +534,9 @@ function recalculatePhysics() {
     if (pd > l2.regSet + p.sgAllowance * 0.5) {
       l2.pTrunk = pd;
       l2.activeRole = 'STANDBY';
+      // In Stand-by automatico il Regolatore L2 è chiuso (sente Pd > Set_L2), mentre il Monitor L2 (Set_Mon2 > Pd) è APERTO -> nel tronchetto L2 c'è Pu!
+      l2.pMidIsPu = true;
+      l2.pMidDisplay = p.pu;
       if (p.arch === 'PILOTED') {
         l2.regPmot = pd;
       }
@@ -614,12 +590,22 @@ function canLineDeliverGas(line) {
   return true;
 }
 
+/**
+ * Calcola sia la pressione nel TRONCHETTO (tra Monitor e Regolatore, line.pMidDisplay)
+ * sia la pressione nel TRONCO DI VALLE (tra Regolatore e V2, line.pTrunk).
+ */
 function computeLinePneumatics(line, lineNum, currentManifoldP) {
   const p = state.preset;
   const isPiloted = p.arch === 'PILOTED';
   const upstreamAvailable = (line.v1Open || line.bpOpen) && line.sbArmed;
+  const hasMonSeatLeak = lineNum === 1 && state.faultMonSeat1Leak;
 
+  // 1. Se a monte il flusso è intercettato (V1 chiusa o Blocco scattato)
   if (!upstreamAvailable) {
+    if (line.sfIntOpen || line.sfOpen) {
+      line.pMidIsPu = false;
+      line.pMidDisplay = 0;
+    }
     if (line.sfOpen || (line.v2Open && state.flowDemand > 0 && !canOtherLineFeed(lineNum))) {
       line.pTrunk = 0;
       line.trappedTrunkP = 0;
@@ -630,86 +616,154 @@ function computeLinePneumatics(line, lineNum, currentManifoldP) {
     return;
   }
 
-  if (isPiloted && (!line.regPilotSupplyOpen || !line.monPilotSupplyOpen)) {
-    line.activeRole = 'PILOT_CLOSED';
-    const hasSeatLeak = lineNum === 1 && state.faultSeat1Leak;
-    const hasOutflow = line.sfOpen || (line.v2Open && state.flowDemand > 0);
-
-    if (hasOutflow) {
-      line.pTrunk = line.v2Open ? currentManifoldP : 0;
-      line.trappedTrunkP = line.pTrunk;
-    } else {
-      if (hasSeatLeak) {
-        line.pTrunk = Math.min(line.monSet + p.sgAllowance, line.regSet + p.seatLeakDelta);
-      } else {
-        line.pTrunk = Math.min(line.trappedTrunkP, line.regSet + p.sgAllowance);
-      }
-      line.trappedTrunkP = line.pTrunk;
-    }
-    line.regPmot = line.pTrunk;
-    line.monPmot = line.monPilotSupplyOpen ? p.pilotSupplyNominal : line.pTrunk;
-    return;
-  }
-
+  // 2. Verifichiamo se il Regolatore Principale è COMPLETAMENTE CHIUSO:
+  // Ciò avviene quando:
+  // a) Nei regolatori pilotati si chiude il rubinetto Alim.Pil del Regolatore Principale (Fail-Close), OPPURE
+  // b) V2 è chiusa e SF di valle è chiuso (portata a valle = 0) e il Regolatore Principale non è forzato aperto!
   const regForcedOpenByImpulse =
     line.regImpulseState === 'vented' ||
     (lineNum === 1 && state.faultRupture1) ||
-    (line.monImpulseState === 'vented' ? false : false) ||
     (!line.v2Open && line.regImpulseTap === 'manifold' && currentManifoldP < line.regSet);
 
-  let targetP = line.regSet;
-  if (regForcedOpenByImpulse) {
-    targetP = line.monSet;
-    line.activeRole = 'MONITOR_WORK';
-  } else {
-    line.activeRole = 'ACTIVE';
-  }
+  const hasDownstreamFlow = (line.v2Open && state.flowDemand > 0) || line.sfOpen;
+  const regIsClosedShut =
+    (isPiloted && !line.regPilotSupplyOpen) || (!hasDownstreamFlow && !regForcedOpenByImpulse);
 
-  const hasFlow = (line.v2Open && state.flowDemand > 0) || line.sfOpen;
-
-  if (hasFlow) {
-    line.pTrunk = targetP;
-    line.trappedTrunkP = targetP;
-
-    if (isPiloted) {
-      const deltaMot = p.unit === 'bar' ? 0.65 : 35.0;
-      if (line.activeRole === 'MONITOR_WORK') {
-        line.regPmot = p.pilotSupplyNominal;
-        line.monPmot = +(targetP + deltaMot).toFixed(2);
+  // 3. Se il Regolatore Principale è COMPLETAMENTE CHIUSO, analizziamo cosa succede nel TRONCHETTO (tra Monitor e Regolatore):
+  if (regIsClosedShut) {
+    // Calcolo prima la pressione a valle del Regolatore Principale chiuso (pTrunk)
+    if (isPiloted && !line.regPilotSupplyOpen) {
+      line.activeRole = 'PILOT_CLOSED';
+      if (hasDownstreamFlow) {
+        line.pTrunk = line.v2Open ? currentManifoldP : 0;
       } else {
-        line.regPmot = +(targetP + deltaMot).toFixed(2);
-        line.monPmot = p.pilotSupplyNominal;
+        line.pTrunk =
+          lineNum === 1 && state.faultSeat1Leak
+            ? Math.min(line.monSet + p.sgAllowance, line.regSet + p.seatLeakDelta)
+            : Math.min(line.trappedTrunkP, line.regSet + p.sgAllowance);
       }
-    }
-  } else {
-    let lockupP = targetP + p.sgAllowance;
-
-    if (line.trappedTrunkP > lockupP && !regForcedOpenByImpulse) {
-      lockupP = line.trappedTrunkP;
-    }
-
-    if (lineNum === 1) {
-      if (state.faultSeat1Leak) {
-        lockupP = Math.max(lockupP, line.regSet + p.seatLeakDelta);
-      } else if (isPiloted && state.faultPilot1Leak && line.regPilotSupplyOpen) {
-        lockupP = Math.max(lockupP, line.regSet + p.pilotLeakDelta);
+      line.trappedTrunkP = line.pTrunk;
+      line.regPmot = line.pTrunk;
+    } else {
+      // V2 chiusa e SF chiuso con Regolatore Principale in chiusura statica (SG)
+      line.activeRole = 'ACTIVE';
+      let lockupP = line.regSet + p.sgAllowance;
+      if (line.trappedTrunkP > lockupP) lockupP = line.trappedTrunkP;
+      if (lineNum === 1) {
+        if (state.faultSeat1Leak) {
+          lockupP = Math.max(lockupP, line.regSet + p.seatLeakDelta);
+        } else if (isPiloted && state.faultPilot1Leak && line.regPilotSupplyOpen) {
+          lockupP = Math.max(lockupP, line.regSet + p.pilotLeakDelta);
+        }
       }
-    }
-
-    line.pTrunk = lockupP;
-    line.trappedTrunkP = lockupP;
-
-    if (isPiloted) {
-      if (regForcedOpenByImpulse) {
-        line.regPmot = p.pilotSupplyNominal;
-        line.monPmot = line.pTrunk;
-      } else {
+      line.pTrunk = lockupP;
+      line.trappedTrunkP = lockupP;
+      if (isPiloted) {
         line.regPmot =
           lineNum === 1 && state.faultPilot1Leak && line.regPilotSupplyOpen
             ? +(line.pTrunk + (p.unit === 'bar' ? 0.25 : 15)).toFixed(2)
             : line.pTrunk;
-        line.monPmot = p.pilotSupplyNominal;
       }
+    }
+
+    // ★ DINAMICA DEL TRONCHETTO (TRA MONITOR E REGOLATORE CHIUSO) ★
+    // Come giustamente evidenziato: quando il Regolatore Principale è chiuso, aprendo e richiudendo lo Sfiato del Tronchetto (sfIntOpen)
+    // si verifica la regolazione e la tenuta in chiusura (SG) del Monitor!
+    if (line.sfIntOpen) {
+      // Lo Sfiato del Tronchetto è APERTO mentre il Regolatore Principale a valle è chiuso:
+      line.tronchettoDepressurized = true;
+      if (isPiloted && !line.monPilotSupplyOpen) {
+        // Se anche l'alimentazione pilota del Monitor è chiusa, il Monitor è in Fail-Close e lo sfiato scarica il tronchetto a 0!
+        line.pMidIsPu = false;
+        line.pMidDisplay = 0;
+        line.monPmot = 0;
+      } else {
+        // Il Monitor lamina sul flusso dello Sfiato del Tronchetto portando il Tronchetto a Pm (set-point del Monitor)!
+        line.pMidIsPu = false;
+        line.pMidDisplay = line.monSet;
+        if (isPiloted) {
+          const deltaMot = p.unit === 'bar' ? 0.65 : 35.0;
+          line.monPmot = +(line.monSet + deltaMot).toFixed(2);
+        }
+      }
+    } else if (line.tronchettoDepressurized) {
+      // Lo Sfiato del Tronchetto è stato RICHIUSO con il Regolatore Principale sempre chiuso -> PROVA DI TENUTA DEL MONITOR!
+      line.testedMonitorLockup = true;
+      if (hasMonSeatLeak) {
+        // Se la sede dell'otturatore del Monitor trafila, la pressione nel Tronchetto chiuso risale fino alla Pressione di Monte (Pu)!
+        line.pMidIsPu = true;
+        line.pMidDisplay = p.pu;
+      } else if (isPiloted && !line.monPilotSupplyOpen) {
+        line.pMidIsPu = false;
+        line.pMidDisplay = 0;
+      } else {
+        // Il Monitor chiude ermeticamente nel tronchetto al proprio valore di SG (Pm + SG)!
+        line.pMidIsPu = false;
+        line.pMidDisplay = +(line.monSet + p.sgAllowance).toFixed(2);
+      }
+      if (isPiloted) line.monPmot = line.pMidDisplay;
+    } else {
+      // Se lo Sfiato del Tronchetto non è stato aperto, tra il Monitor (che legge Pd < Pm ed è rimasto aperto) e il Regolatore chiuso c'è Pu!
+      line.pMidIsPu = true;
+      line.pMidDisplay = p.pu;
+      if (isPiloted) line.monPmot = p.pilotSupplyNominal;
+    }
+    return;
+  }
+
+  // Se il Regolatore Principale riapre, il tronchetto segue il regime dinamico normale
+  line.tronchettoDepressurized = false;
+
+  // 4. Caso in cui (nei pilotati) solo l'alimentazione pilota del Monitor è chiusa
+  if (isPiloted && !line.monPilotSupplyOpen) {
+    line.activeRole = 'PILOT_CLOSED';
+    line.pMidIsPu = false;
+    line.pMidDisplay = hasMonSeatLeak ? p.pu : 0;
+    line.pTrunk = line.v2Open ? currentManifoldP : 0;
+    line.monPmot = 0;
+    line.regPmot = line.pTrunk;
+    return;
+  }
+
+  // 5. Regime di Erogazione / Regolazione Attiva (con portata attraverso V2 o SF di valle):
+  if (regForcedOpenByImpulse) {
+    // ★ IL REGOLATORE PRINCIPALE È SPALANCATO -> STA LAVORANDO IL MONITOR! ★
+    // Poiché la laminazione avviene sul Monitor e il Regolatore Principale è tutto aperto,
+    // il manometro nel TRONCHETTO legge la Pressione di Valle regolata dal Monitor (Pm)!
+    line.activeRole = 'MONITOR_WORK';
+    const regulatedP = hasDownstreamFlow ? line.monSet : +(line.monSet + p.sgAllowance).toFixed(2);
+    line.pTrunk = regulatedP;
+    line.trappedTrunkP = regulatedP;
+
+    line.pMidIsPu = false;
+    line.pMidDisplay = regulatedP;
+
+    if (isPiloted) {
+      const deltaMot = p.unit === 'bar' ? 0.65 : 35.0;
+      line.regPmot = p.pilotSupplyNominal; // Regolatore 1 spalancato
+      line.monPmot = hasDownstreamFlow ? +(line.monSet + deltaMot).toFixed(2) : regulatedP; // Monitor in lavoro
+    }
+  } else {
+    // ★ STA LAVORANDO IL REGOLATORE PRINCIPALE (MARCIA NORMALE)! ★
+    // Il Monitor è completamente aperto (perché legge Pd < Pm):
+    // quindi nel TRONCHETTO tra Monitor e Regolatore c'è la Pressione di Monte (Pu)!
+    line.activeRole = 'ACTIVE';
+    line.pTrunk = line.regSet;
+    line.trappedTrunkP = line.regSet;
+
+    if (line.sfIntOpen) {
+      // Anche se apri leggermente lo sfiato del tronchetto in marcia normale con Monitor spalancato, nel tronchetto c'è Pu
+      line.pMidIsPu = true;
+      line.pMidDisplay = +(p.pu * 0.98).toFixed(1);
+    } else {
+      line.pMidIsPu = true;
+      line.pMidDisplay = p.pu;
+    }
+
+    if (isPiloted) {
+      const deltaMot = p.unit === 'bar' ? 0.65 : 35.0;
+      line.regPmot = +(line.regSet + deltaMot).toFixed(2);
+      line.monPmot = p.pilotSupplyNominal; // Monitor tenuto completamente aperto dal suo pilota
     }
   }
 }
@@ -752,9 +806,6 @@ function checkSlamShut(line, targetId, label) {
   }
 }
 
-/**
- * Gestione Vista Singola Linea / Doppia Linea e Zoom SVG
- */
 function applyViewAndZoom() {
   const svg = document.getElementById('pid-svg');
   const gL1 = document.getElementById('svg-line-1');
@@ -764,7 +815,6 @@ function applyViewAndZoom() {
   const otherText = document.getElementById('other-line-text');
   const p = state.preset;
 
-  // Aggiorna bottoni attivi
   document.querySelectorAll('[data-view-mode]').forEach((btn) => {
     btn.classList.toggle('active', btn.getAttribute('data-view-mode') === state.viewMode);
   });
@@ -772,41 +822,37 @@ function applyViewAndZoom() {
   if (state.viewMode === 'both') {
     gL1.style.display = 'block';
     gL2.style.display = 'block';
-    gGaugePd.setAttribute('transform', 'translate(1105, 500)');
-    svg.setAttribute('viewBox', '0 0 1200 760');
+    gGaugePd.setAttribute('transform', 'translate(1145, 500)');
+    svg.setAttribute('viewBox', '0 0 1240 760');
     otherSummary.hidden = true;
   } else if (state.viewMode === 'l1') {
     gL1.style.display = 'block';
     gL2.style.display = 'none';
-    gGaugePd.setAttribute('transform', 'translate(1105, 315)');
-    svg.setAttribute('viewBox', '0 8 1200 365');
+    gGaugePd.setAttribute('transform', 'translate(1145, 315)');
+    svg.setAttribute('viewBox', '0 8 1240 365');
     otherSummary.hidden = false;
     const l2Badge = document.getElementById('svg-l2-badge').textContent;
-    otherText.textContent = `⚡ Dinamica 2ª Linea attiva in background: ${l2Badge} | P_tr2 = ${formatPressure(
+    otherText.textContent = `⚡ 2ª Linea (in background): ${l2Badge} | P Valle L2 = ${formatPressure(
       state.l2.pTrunk,
       p
     )}`;
   } else if (state.viewMode === 'l2') {
     gL1.style.display = 'none';
     gL2.style.display = 'block';
-    gGaugePd.setAttribute('transform', 'translate(1105, 500)');
-    svg.setAttribute('viewBox', '0 365 1200 355');
+    gGaugePd.setAttribute('transform', 'translate(1145, 500)');
+    svg.setAttribute('viewBox', '0 365 1240 355');
     otherSummary.hidden = false;
     const l1Badge = document.getElementById('svg-l1-badge').textContent;
-    otherText.textContent = `⚡ Dinamica 1ª Linea attiva in background: ${l1Badge} | P_tr1 = ${formatPressure(
+    otherText.textContent = `⚡ 1ª Linea (in background): ${l1Badge} | P Valle L1 = ${formatPressure(
       state.l1.pTrunk,
       p
     )}`;
   }
 
-  // Applica livello di Zoom tramite larghezza percentuale nel contenitore scrollabile
   svg.style.width = `${state.zoomPercent}%`;
   document.getElementById('zoom-readout').textContent = `${state.zoomPercent}%`;
 }
 
-/**
- * Rendering P&ID SVG + KPI + Inspector
- */
 function renderAll() {
   const p = state.preset;
   const l1 = state.l1;
@@ -814,8 +860,8 @@ function renderAll() {
 
   document.getElementById('plant-arch-subtitle').innerHTML = p.archSubtitle;
   document.getElementById('kpi-pu').textContent = `${p.pu.toFixed(1).replace('.', ',')} bar`;
+  document.getElementById('kpi-pint1').textContent = formatTronchetto(l1, p);
   document.getElementById('kpi-ptr1').textContent = formatPressure(l1.pTrunk, p);
-  document.getElementById('kpi-ptr2').textContent = formatPressure(l2.pTrunk, p);
   document.getElementById('kpi-pd').textContent = formatPressure(state.pdManifold, p);
   document.getElementById('kpi-flow').textContent = `${state.flowDemand} Sm³/h`;
   document.getElementById('flow-val-label').textContent = `${state.flowDemand} Sm³/h`;
@@ -827,7 +873,7 @@ function renderAll() {
     statusEl.className = 'kpi-value status-ok';
     pdBox.style.setProperty('--status-border', '#10b981');
   } else if (state.supplyStatus === 'L1_MONITOR') {
-    statusEl.textContent = 'EMERGENZA MONITOR L1';
+    statusEl.textContent = 'LAVORA MONITOR L1!';
     statusEl.className = 'kpi-value status-warn';
     pdBox.style.setProperty('--status-border', '#f59e0b');
   } else if (state.supplyStatus === 'L2_EMERGENCY') {
@@ -840,13 +886,11 @@ function renderAll() {
     pdBox.style.setProperty('--status-border', '#f43f5e');
   }
 
-  // Manometri SVG
   document.getElementById('svg-gauge-pu').textContent = `${p.pu.toFixed(1)}`;
   document.getElementById('svg-gauge-l1').textContent = formatShort(l1.pTrunk, p);
   document.getElementById('svg-gauge-l2').textContent = formatShort(l2.pTrunk, p);
   document.getElementById('svg-gauge-pd').textContent = formatShort(state.pdManifold, p);
 
-  // Titoli Linee
   const archTag = p.arch === 'PILOTED' ? 'REGOLATORE PILOTATO FAIL-CLOSE' : 'AZIONE DIRETTA FAIL-OPEN';
   document.getElementById('svg-l1-title').textContent = `LINEA 1 — PRINCIPALE (${archTag})`;
   document.getElementById('svg-l2-title').textContent = `LINEA 2 — SECONDA LINEA DI RISERVA (${archTag})`;
@@ -858,11 +902,9 @@ function renderAll() {
   renderLineSVG(1, l1);
   renderLineSVG(2, l2);
 
-  // Valvola di Sfioro (VS)
   document.getElementById('sub-vs').textContent = `Set: ${formatShort(state.vsSet, p)} ${p.unit}`;
   document.getElementById('shape-vs').setAttribute('class', state.vsVenting ? 'relief-venting' : 'relief-closed');
 
-  // Evidenziazione componente selezionato
   document.querySelectorAll('.svg-interactive').forEach((el) => {
     const compId = el.id.replace('svg-btn-', '');
     el.classList.toggle('selected-comp', compId === state.selectedComp);
@@ -881,16 +923,33 @@ function renderLineSVG(num, line) {
   const yImpReg = num === 1 ? 146 : 486;
   const yRegTop = num === 1 ? 186 : 526;
 
-  // Valvole V1, V2, BP
   document.getElementById(`shape-v1-${sfx}`).setAttribute('class', line.v1Open ? 'valve-open' : 'valve-closed');
   document.getElementById(`shape-v2-${sfx}`).setAttribute('class', line.v2Open ? 'valve-open' : 'valve-closed');
   document.getElementById(`shape-bp-${sfx}`).setAttribute('class', line.bpOpen ? 'valve-open' : 'valve-closed');
 
-  // Blocco SB
   document.getElementById(`head-sb-${sfx}`).setAttribute('class', line.sbArmed ? 'slam-armed' : 'slam-tripped');
   document.getElementById(`txt-sb-${sfx}`).textContent = line.sbArmed ? 'ARMATO' : 'BLOCCATO';
   document.getElementById(`sub-sb-${sfx}`).textContent =
     `Max ${formatShort(line.blkMax, p)} | Min ${formatShort(line.blkMin, p)}`;
+
+  // ★ Manometro e Tubo del TRONCHETTO (tra Monitor e Regolatore Principale) ★
+  const gaugeInt = document.getElementById(`svg-gauge-int-${sfx}`);
+  const pipeTronchetto = document.getElementById(`pipe-${sfx}-tronchetto`);
+  const dotSfInt = document.getElementById(`dot-sfint-${sfx}`);
+  const lblSfInt = document.getElementById(`lbl-sfint-${sfx}`);
+
+  if (line.pMidIsPu) {
+    gaugeInt.textContent = `${Number(line.pMidDisplay).toFixed(1)} bar`;
+    pipeTronchetto.setAttribute('class', 'pipe-segment pipe-hp-stroke'); // Rosso = Pressione di Monte Pu (Monitor aperto, lavora Regolatore)
+  } else {
+    gaugeInt.textContent = `${formatShort(line.pMidDisplay, p)}`;
+    pipeTronchetto.setAttribute(
+      'class',
+      line.pMidDisplay === 0 ? 'pipe-segment pipe-zero-stroke' : 'pipe-segment pipe-warn-stroke'
+    ); // Ambra = Pressione laminata dal Monitor!
+  }
+  dotSfInt.setAttribute('class', line.sfIntOpen ? 'cock-test' : 'cock-closed');
+  lblSfInt.textContent = line.sfIntOpen ? 'Sf.Tronch: ON' : 'Sfiato Tronch.';
 
   // Rubinetto impulso Blocco
   const dotRblk = document.getElementById(`dot-rblk-${sfx}`);
@@ -929,19 +988,18 @@ function renderLineSVG(num, line) {
     document.getElementById(`pmot-mon-${sfx}`).textContent = 'Molla Diretta';
   }
 
-  // Tracciato dinamico Presa d'Impulso Regolatore Principale (TRONCO a monte di V2 [x=772] vs COLLETTORE a valle di V2 [x=915])
-  const tapX = line.regImpulseTap === 'trunk' ? 772 : 915;
+  // Tracciato dinamico Presa d'Impulso Regolatore Principale (MONTE V2 [x=810] vs VALLE V2 [x=955])
+  const tapX = line.regImpulseTap === 'trunk' ? 810 : 955;
   const impRegPath = document.getElementById(`imp-reg-${sfx}`);
-  impRegPath.setAttribute('d', `M 630 ${yRegTop} L 630 ${yImpReg} L ${tapX} ${yImpReg} L ${tapX} ${yPipe}`);
+  impRegPath.setAttribute('d', `M 665 ${yRegTop} L 665 ${yImpReg} L ${tapX} ${yImpReg} L ${tapX} ${yPipe}`);
   const tapDot = document.getElementById(`tap-dot-reg-${sfx}`);
   tapDot.setAttribute('cx', String(tapX));
 
-  // Stato Rubinetto Presa d'Impulso Regolatore
   const dotRreg = document.getElementById(`dot-rreg-${sfx}`);
   const lblRreg = document.getElementById(`lbl-rreg-${sfx}`);
   if (line.regImpulseState === 'connected') {
     dotRreg.setAttribute('class', 'cock-open');
-    lblRreg.textContent = line.regImpulseTap === 'trunk' ? 'Imp.Reg: TRONCO' : 'Imp.Reg: VALLE V2';
+    lblRreg.textContent = line.regImpulseTap === 'trunk' ? 'Imp.Reg: MONTE V2' : 'Imp.Reg: VALLE V2';
     impRegPath.setAttribute(
       'class',
       line.regImpulseTap === 'trunk' ? 'impulse-line' : 'impulse-manifold-line'
@@ -952,17 +1010,15 @@ function renderLineSVG(num, line) {
     impRegPath.setAttribute('class', 'impulse-test-active');
   }
 
-  // Candela di Sfiato SF
+  // Candela di Sfiato Valle Linea SF
   const dotSf = document.getElementById(`dot-sf-${sfx}`);
   const lblSf = document.getElementById(`lbl-sf-${sfx}`);
   dotSf.setAttribute('class', line.sfOpen ? 'cock-test' : 'cock-closed');
   lblSf.textContent = line.sfOpen ? `SF-L${num}: APERTO` : `Sfiato SF-L${num}`;
 
-  // Setpoint labels
   document.getElementById(`sub-mon-${sfx}`).textContent = `Set: ${formatShort(line.monSet, p)} ${p.unit}`;
   document.getElementById(`sub-reg-${sfx}`).textContent = `Set: ${formatShort(line.regSet, p)} ${p.unit}`;
 
-  // Colori Regolatore, Monitor e Badge Linea
   const shapeReg = document.getElementById(`shape-reg-${sfx}`);
   const shapeMon = document.getElementById(`shape-mon-${sfx}`);
   const badge = document.getElementById(`svg-${sfx}-badge`);
@@ -974,7 +1030,7 @@ function renderLineSVG(num, line) {
     shapeReg.setAttribute('class', 'reg-fault');
     pipeMid.setAttribute('class', 'pipe-segment pipe-zero-stroke');
   } else if (line.activeRole === 'PILOT_CLOSED') {
-    badge.textContent = 'CHIUSO PER ASSENZA ALIM. PILOTA (FAIL-CLOSE)';
+    badge.textContent = 'REGOLATORE CHIUSO (FAIL-CLOSE ALIM. PILOTA OFF)';
     badge.setAttribute('class', 'line-status-badge badge-tripped');
     shapeReg.setAttribute('class', 'reg-fault');
     pipeMid.setAttribute('class', 'pipe-segment pipe-zero-stroke');
@@ -986,19 +1042,19 @@ function renderLineSVG(num, line) {
   } else if (!line.v2Open) {
     if (line.activeRole === 'MONITOR_WORK') {
       badge.textContent = line.sfOpen
-        ? 'PROVA MONITOR IN CORSO (SF APERTO)'
-        : 'SPALANCATO (IMPULSO SU VALLE V2 -> ENTRA MONITOR!)';
+        ? 'LAVORA MONITOR (TRONCHETTO = P VALLE)'
+        : 'SPALANCATO (IMPULSO SU VALLE V2 -> TENUTA MONITOR!)';
     } else {
       badge.textContent = line.sfOpen
         ? 'IN REGOLAZIONE SU SFIATO SF'
-        : `TRONCO CHIUSO (SG = ${formatShort(line.pTrunk, p)} ${p.unit})`;
+        : `CHIUSO IN SG (P VALLE = ${formatShort(line.pTrunk, p)} ${p.unit})`;
     }
     badge.setAttribute('class', 'line-status-badge badge-standby');
     shapeReg.setAttribute('class', line.activeRole === 'MONITOR_WORK' ? 'reg-fault' : 'reg-active');
     shapeMon.setAttribute('class', line.activeRole === 'MONITOR_WORK' ? 'reg-active' : 'reg-monitor');
     pipeMid.setAttribute('class', 'pipe-segment pipe-warn-stroke');
   } else if (line.activeRole === 'MONITOR_WORK') {
-    badge.textContent = 'IN SERVIZIO SU MONITOR!';
+    badge.textContent = 'LAVORA IL MONITOR! (TRONCHETTO = P VALLE)';
     badge.setAttribute('class', 'line-status-badge badge-standby');
     shapeReg.setAttribute('class', 'reg-fault');
     shapeMon.setAttribute('class', 'reg-active');
@@ -1010,7 +1066,7 @@ function renderLineSVG(num, line) {
     shapeMon.setAttribute('class', 'reg-monitor');
     pipeMid.setAttribute('class', 'pipe-segment pipe-mp-stroke');
   } else {
-    badge.textContent = 'IN EROGAZIONE ATTIVA';
+    badge.textContent = 'LAVORA REGOLATORE (TRONCHETTO = Pu)';
     badge.setAttribute('class', 'line-status-badge');
     shapeReg.setAttribute('class', 'reg-active');
     shapeMon.setAttribute('class', 'reg-monitor');
@@ -1060,12 +1116,68 @@ function renderInspector() {
   const lineCfg = isL2 ? p.line2 : p.line1;
   const lineLabel = isL2 ? '2ª Linea (Riserva)' : '1ª Linea (Principale)';
 
+  // ★ Caso 0: TRONCHETTO INTERMEDIO tra Monitor e Regolatore (Manometro TRONCHETTO + Sfiato Tronchetto) ★
+  if (id.startsWith('sfint-')) {
+    tagEl.textContent = `TRONCHETTO MONITOR → REGOLATORE · ${lineLabel}`;
+    titleEl.textContent = `Manometro & Sfiato del Tronchetto (${isL2 ? 'L2' : 'L1'})`;
+    descEl.textContent =
+      'Il tronchetto tra Monitor e Regolatore Principale permette di: 1) capire subito chi sta lavorando (segna Pu se lavora il Regolatore e il Monitor è aperto; segna la Pressione di Valle se lavora il Monitor e il Regolatore è spalancato); 2) verificare la tenuta in chiusura del Monitor tramite lo Sfiato del Tronchetto quando il Regolatore Principale a valle è completamente chiuso!';
+
+    const whoIsWorkingText = line.pMidIsPu
+      ? `STA LAVORANDO IL REGOLATORE (Monitor aperto → P tronchetto = Pu)`
+      : line.activeRole === 'MONITOR_WORK'
+      ? `STA LAVORANDO IL MONITOR! (Regolatore spalancato → P tronchetto = P valle)`
+      : `PROVA TENUTA MONITOR IN CORSO (Regolatore chiuso a valle)`;
+
+    ctrlsEl.innerHTML = `
+      <div class="inspector-stat-row">
+        <span>Pressione Manometro Tronchetto:</span>
+        <strong class="${line.pMidIsPu ? 'status-danger' : 'status-warn'}">${formatTronchetto(line, p)}</strong>
+      </div>
+      <div class="inspector-stat-row">
+        <span>Diagnosi dal Manometro:</span>
+        <strong>${whoIsWorkingText}</strong>
+      </div>
+      <div class="inspector-stat-row">
+        <span>Rubinetto Sfiato Tronchetto:</span>
+        <strong class="${line.sfIntOpen ? 'status-warn' : 'status-ok'}">
+          ${line.sfIntOpen ? 'APERTO (Scarico in atmosfera)' : 'CHIUSO'}
+        </strong>
+      </div>
+      <div class="diagnostic-callout">
+        💡 <strong>Come verificare la tenuta del Monitor:</strong> Chiudi completamente il Regolatore Principale (chiudendo <code>V2</code> e <code>SF</code> di valle, oppure chiudendo <code>Alim.Pil</code> su un regolatore pilotato). Poi <strong>apri lo Sfiato del Tronchetto</strong> per scaricare la $P_u$ e <strong>richiudilo</strong>: se il Monitor tiene, la pressione nel tronchetto resta ferma a ${formatPressure(
+          +(line.monSet + p.sgAllowance).toFixed(2),
+          p
+        )} senza risalire a $P_u$ (${p.pu} bar)!
+      </div>
+      <div class="inspector-btn-row">
+        <button type="button" class="btn btn-sm ${line.sfIntOpen ? 'btn-secondary' : 'btn-primary'}" id="act-toggle-sfint">
+          ${line.sfIntOpen ? 'Chiudi Sfiato Tronchetto (Verifica Tenuta Monitor)' : 'Apri Sfiato del Tronchetto'}
+        </button>
+      </div>
+    `;
+
+    document.getElementById('act-toggle-sfint').addEventListener('click', () => {
+      line.sfIntOpen = !line.sfIntOpen;
+      addLog(
+        `Sfiato del Tronchetto (tra Monitor e Regolatore ${isL2 ? 'L2' : 'L1'}): ${
+          line.sfIntOpen ? 'APERTO' : 'CHIUSO'
+        }`,
+        'info'
+      );
+      recalculatePhysics();
+      renderAll();
+    });
+    return;
+  }
+
+  // 1. Regolatore Principale
   if (id.startsWith('reg-') || id.startsWith('rreg-') || id.startsWith('palim-reg-')) {
     tagEl.textContent = `${isPiloted ? 'REGOLATORE PILOTATO (FAIL-CLOSE)' : 'AZIONE DIRETTA (FAIL-OPEN)'} · ${lineLabel}`;
     titleEl.textContent = lineCfg.regModel;
     descEl.textContent = isPiloted
-      ? 'Regolatore pilotato normalmente chiuso (Fail-Close). Il pilota riceve gas da monte tramite il preriduttore (Alim.Pil) e modula la Pressione Motrice (Pmot) in base alla pressione letta dalla Presa d\'Impulso.'
-      : 'Regolatore ad azione diretta normalmente aperto (Fail-Open). La molla apre direttamente l\'otturatore e la pressione nella presa d\'impulso agisce sotto la membrana per chiudere.';
+      ? 'Regolatore pilotato normalmente chiuso (Fail-Close). Quando è in regolazione normale, a monte nel Tronchetto c\'è Pu. Se scarichi la sua presa d\'impulso a 0, si spalanca facendo entrare in lavoro il Monitor (e il Tronchetto scende a Pm).'
+      : 'Regolatore ad azione diretta normalmente aperto (Fail-Open). La molla apre l\'otturatore e la pressione nella presa d\'impulso agisce sotto la membrana per chiudere.';
 
     const sensedImpulseP =
       line.regImpulseState === 'vented'
@@ -1091,7 +1203,7 @@ function renderInspector() {
           </div>
           <div class="inspector-btn-row">
             <button type="button" class="btn btn-sm ${line.regPilotSupplyOpen ? 'btn-danger' : 'btn-success'}" id="act-toggle-palim">
-              ${line.regPilotSupplyOpen ? 'Chiudi Alimentazione Pilota (Fail-Close / Test Sede)' : 'Apri Alimentazione Pilota'}
+              ${line.regPilotSupplyOpen ? 'Chiudi Alimentazione Pilota (Fail-Close)' : 'Apri Alimentazione Pilota'}
             </button>
           </div>
         </div>
@@ -1101,13 +1213,10 @@ function renderInspector() {
     const impulseTapWarning =
       !line.v2Open && line.regImpulseTap === 'manifold'
         ? `<div class="diagnostic-callout">
-             ⚠️ <strong>Attenzione Presa d'Impulso:</strong> Con <code>V2-${isL2 ? 'L2' : 'L1'}</code> chiusa, la presa d'impulso sta leggendo il <strong>Collettore a valle di V2</strong> (${formatPressure(
+             ⚠️ <strong>Attenzione Presa d'Impulso:</strong> Con <code>V2-${isL2 ? 'L2' : 'L1'}</code> chiusa, la presa d'impulso legge il <strong>Collettore a valle di V2</strong> (${formatPressure(
                state.pdManifold,
                p
-             )}) invece del Tronco! Poiché ${formatShort(state.pdManifold, p)} &lt; ${formatShort(
-            line.regSet,
-            p
-          )}, il regolatore non può andare in chiusura SG e si spalanca fino al Monitor. Commuta la presa su <strong>TRONCO (a monte di V2)</strong>!
+             )})! Il regolatore si è spalancato e nel Tronchetto sta lavorando il Monitor. Commuta la presa su <strong>MONTE V2</strong>!
            </div>`
         : '';
 
@@ -1117,7 +1226,11 @@ function renderInspector() {
         <strong>${formatPressure(line.regSet, p)} (SG nominale: +${formatShort(p.sgAllowance, p)} ${p.unit})</strong>
       </div>
       <div class="inspector-stat-row">
-        <span>Pressione Tronco Attuale:</span>
+        <span>Pressione nel Tronchetto (a monte):</span>
+        <strong>${formatTronchetto(line, p)}</strong>
+      </div>
+      <div class="inspector-stat-row">
+        <span>Pressione Valle Linea (a monte V2):</span>
         <strong>${formatPressure(line.pTrunk, p)}</strong>
       </div>
       ${pilotHTML}
@@ -1126,7 +1239,7 @@ function renderInspector() {
         <div class="inspector-stat-row">
           <span>Punto di Presa Impulso:</span>
           <strong class="${line.regImpulseTap === 'trunk' ? 'status-ok' : 'status-warn'}">
-            ${line.regImpulseTap === 'trunk' ? 'TRONCO (a monte di V2)' : 'COLLETTORE (a valle di V2)'}
+            ${line.regImpulseTap === 'trunk' ? 'MONTE V2 (Valle Regolatore)' : 'VALLE V2 (Collettore)'}
           </strong>
         </div>
         <div class="inspector-stat-row">
@@ -1138,7 +1251,7 @@ function renderInspector() {
         ${impulseTapWarning}
         <div class="inspector-btn-row">
           <button type="button" class="btn btn-xs btn-primary" id="act-toggle-imp-tap">
-            Commuta Presa: ${line.regImpulseTap === 'trunk' ? 'Passa a VALLE V2 (Collettore)' : 'Passa a MONTE V2 (Tronco)'}
+            Commuta Presa: ${line.regImpulseTap === 'trunk' ? 'Passa a VALLE V2 (Collettore)' : 'Passa a MONTE V2'}
           </button>
           <button type="button" class="btn btn-xs btn-outline" id="act-toggle-reg-imp">
             ${line.regImpulseState === 'connected' ? 'Scarica Impulso a 0 (Prova Monitor)' : 'Riconnetti Impulso in Linea'}
@@ -1158,7 +1271,7 @@ function renderInspector() {
           `Alimentazione Pilota Regolatore ${isL2 ? 'L2' : 'L1'}: ${
             line.regPilotSupplyOpen
               ? 'APERTA (Pmot attiva)'
-              : 'CHIUSA -> Pmot azzerata, il regolatore pilotato va in chiusura (Fail-Close)!'
+              : 'CHIUSA -> Regolatore principale completamente chiuso (Fail-Close)!'
           }`,
           line.regPilotSupplyOpen ? 'ok' : 'warn'
         );
@@ -1171,7 +1284,7 @@ function renderInspector() {
       line.regImpulseTap = line.regImpulseTap === 'trunk' ? 'manifold' : 'trunk';
       addLog(
         `Punto presa d'impulso Regolatore ${isL2 ? 'L2' : 'L1'} commutato su: ${
-          line.regImpulseTap === 'trunk' ? 'TRONCO (a monte di V2)' : 'COLLETTORE (a valle di V2)'
+          line.regImpulseTap === 'trunk' ? 'MONTE V2 (Valle Regolatore)' : 'VALLE V2 (Collettore)'
         }.`,
         'info'
       );
@@ -1184,8 +1297,8 @@ function renderInspector() {
       addLog(
         `Presa d'impulso Regolatore ${isL2 ? 'L2' : 'L1'}: ${
           line.regImpulseState === 'connected'
-            ? 'RICONNESSA IN LINEA'
-            : 'SCARICATA IN ATMOSFERA (0) -> Regolatore spalancato per verifica Monitor!'
+            ? 'RICONNESSA IN LINEA (Tronchetto torna a Pu)'
+            : 'SCARICATA IN ATMOSFERA (0) -> Regolatore spalancato, entra il Monitor (Tronchetto scende a Pm)!'
         }`,
         line.regImpulseState === 'connected' ? 'ok' : 'warn'
       );
@@ -1209,12 +1322,12 @@ function renderInspector() {
     return;
   }
 
+  // 2. Regolatore Monitor
   if (id.startsWith('mon-') || id.startsWith('rmon-') || id.startsWith('palim-mon-')) {
     tagEl.textContent = `REGOLATORE MONITOR IN SERIE · ${lineLabel}`;
     titleEl.textContent = lineCfg.monModel;
-    descEl.textContent = isPiloted
-      ? 'Monitor pilotato installato in serie. Finché la pressione è inferiore al suo set-point (Pm), il suo pilota tiene la massima pressione motrice (Pmot) mantenendolo aperto. Entra in modulazione appena il regolatore principale si spalanca.'
-      : 'Monitor ad azione diretta in serie. Normalmente mantenuto aperto dalla propria molla finché la pressione non raggiunge la soglia di emergenza Pm.';
+    descEl.textContent =
+      'Dispositivo di regolazione d\'emergenza installato a monte del Regolatore Principale. In marcia normale è completamente aperto (nel Tronchetto a valle del Monitor c\'è Pu). Quando il Regolatore Principale si spalanca, il Monitor prende il controllo laminando la pressione nel Tronchetto a Pm!';
 
     ctrlsEl.innerHTML = `
       <div class="inspector-stat-row">
@@ -1222,9 +1335,13 @@ function renderInspector() {
         <strong>${formatPressure(line.monSet, p)}</strong>
       </div>
       <div class="inspector-stat-row">
-        <span>Stato Operativo:</span>
+        <span>Pressione nel Tronchetto (uscita Monitor):</span>
+        <strong>${formatTronchetto(line, p)}</strong>
+      </div>
+      <div class="inspector-stat-row">
+        <span>Stato Operativo Monitor:</span>
         <strong class="${line.activeRole === 'MONITOR_WORK' ? 'status-warn' : 'status-ok'}">
-          ${line.activeRole === 'MONITOR_WORK' ? 'IN REGOLAZIONE ATTIVA DI EMERGENZA!' : 'Aperto in Sorveglianza'}
+          ${line.activeRole === 'MONITOR_WORK' ? 'IN LAVORO (Lamina a Pm)!' : 'Completamente Aperto (Sorveglianza)'}
         </strong>
       </div>
       ${
@@ -1291,7 +1408,7 @@ function renderInspector() {
       ? `Valvola di Valle V2-${isL2 ? 'L2' : 'L1'}`
       : `Valvola di By-pass BP-${isL2 ? 'L2' : 'L1'}`;
     descEl.textContent = isV2
-      ? 'Valvola di isolamento a valle della linea. Nei regolatori pilotati, ricorda di verificare che la presa d\'impulso sia commutata sul TRONCO (a monte di V2) per eseguire la prova di chiusura SG!'
+      ? 'Valvola di isolamento a valle della linea. Nei regolatori pilotati, ricorda di verificare che la presa d\'impulso sia commutata su MONTE V2 per eseguire la prova di chiusura SG!'
       : isV1
       ? 'Valvola di intercettazione principale d\'ingresso linea ad alta pressione (Pu).'
       : 'By-pass di pressurizzazione lenta del tronco a monte.';
@@ -1421,28 +1538,32 @@ function renderInspector() {
   }
 
   if (id.startsWith('sf-')) {
-    tagEl.textContent = `SFIATO A CANDELA · ${lineLabel}`;
-    titleEl.textContent = `Rubinetto di Sfiato Tronco SF-${isL2 ? 'L2' : 'L1'}`;
+    tagEl.textContent = `SFIATO DI VALLE LINEA · ${lineLabel}`;
+    titleEl.textContent = `Rubinetto di Sfiato Valle SF-${isL2 ? 'L2' : 'L1'} (tra Regolatore e V2)`;
     descEl.textContent =
-      'Valvola di sfiato verso candela esterna. Fondamentale con V2 chiusa per: 1) scaricare la sovrapressione intrappolata nel tronco e innescare la regolazione prima di rilevare l\'SG; 2) garantire la portata minima durante la prova del Monitor.';
+      'Valvola di sfiato posta a valle del Regolatore Principale (prima di V2). Serve per innescare e controllare la pressione regolata (e l\'SG del Regolatore Principale) quando V2 è chiusa.';
 
     ctrlsEl.innerHTML = `
       <div class="inspector-stat-row">
-        <span>Stato Rubinetto Sfiato:</span>
+        <span>Pressione Valle Linea (P VALLE ${isL2 ? 'L2' : 'L1'}):</span>
+        <strong>${formatPressure(line.pTrunk, p)}</strong>
+      </div>
+      <div class="inspector-stat-row">
+        <span>Stato Rubinetto Sfiato Valle:</span>
         <strong class="${line.sfOpen ? 'status-warn' : 'status-ok'}">
-          ${line.sfOpen ? 'APERTO (Flusso di sfiato attivo)' : 'CHIUSO (Portata tronco = 0)'}
+          ${line.sfOpen ? 'APERTO (Flusso di sfiato attivo)' : 'CHIUSO (Portata valle = 0)'}
         </strong>
       </div>
       <div class="inspector-btn-row">
         <button type="button" class="btn btn-sm ${line.sfOpen ? 'btn-secondary' : 'btn-primary'}" id="act-toggle-sf">
-          ${line.sfOpen ? 'Chiudi Sfiato SF (Misura SG)' : 'Apri Sfiato a Candela SF'}
+          ${line.sfOpen ? 'Chiudi Sfiato SF (Misura SG Regolatore)' : 'Apri Sfiato a Candela SF'}
         </button>
       </div>
     `;
 
     document.getElementById('act-toggle-sf').addEventListener('click', () => {
       line.sfOpen = !line.sfOpen;
-      addLog(`Rubinetto di sfiato SF-${isL2 ? 'L2' : 'L1'}: ${line.sfOpen ? 'APERTO' : 'CHIUSO'}`, 'info');
+      addLog(`Rubinetto di sfiato valle SF-${isL2 ? 'L2' : 'L1'}: ${line.sfOpen ? 'APERTO' : 'CHIUSO'}`, 'info');
       recalculatePhysics();
       renderAll();
     });
@@ -1511,20 +1632,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Pulsanti Vista Linea (Entrambe / Solo L1 / Solo L2)
   document.querySelectorAll('[data-view-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.viewMode = btn.getAttribute('data-view-mode');
       if (state.viewMode === 'l1' && state.selectedComp.endsWith('l2')) {
-        state.selectedComp = 'reg-l1';
+        state.selectedComp = 'sfint-l1';
       } else if (state.viewMode === 'l2' && state.selectedComp.endsWith('l1')) {
-        state.selectedComp = 'reg-l2';
+        state.selectedComp = 'sfint-l2';
       }
       renderAll();
     });
   });
 
-  // Pulsanti Zoom
   document.getElementById('btn-zoom-in').addEventListener('click', () => {
     state.zoomPercent = Math.min(200, state.zoomPercent + 20);
     applyViewAndZoom();
@@ -1657,9 +1776,21 @@ document.addEventListener('DOMContentLoaded', () => {
     state.faultSeat1Leak = e.target.checked;
     addLog(
       state.faultSeat1Leak
-        ? 'ANOMALIA ATTIVATA: Trafilamento sede Otturatore Principale L1 (la pressione a portata zero sale anche chiudendo l\'alimentazione pilota!).'
-        : 'Sede Otturatore Principale L1 ripristinata.',
+        ? 'ANOMALIA ATTIVATA: Trafilamento sede Otturatore Regolatore Principale L1.'
+        : 'Sede Otturatore Regolatore L1 ripristinata.',
       state.faultSeat1Leak ? 'warn' : 'ok'
+    );
+    recalculatePhysics();
+    renderAll();
+  });
+
+  document.getElementById('chk-fault-monseat1').addEventListener('change', (e) => {
+    state.faultMonSeat1Leak = e.target.checked;
+    addLog(
+      state.faultMonSeat1Leak
+        ? 'ANOMALIA ATTIVATA: Trafilamento sede Otturatore MONITOR L1! (Se chiudi il Regolatore L1 e apri/chiudi lo Sfiato del Tronchetto, vedrai la pressione nel Tronchetto risalire a Pu!).'
+        : 'Sede Otturatore Monitor L1 ripristinata.',
+      state.faultMonSeat1Leak ? 'warn' : 'ok'
     );
     recalculatePhysics();
     renderAll();
@@ -1669,7 +1800,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.faultPilot1Leak = e.target.checked;
     addLog(
       state.faultPilot1Leak
-        ? 'ANOMALIA ATTIVATA: Trafilamento ugello Pilota L1 (SG alto con pilota attivo, ma si arresta se chiudi Alim.Pil!).'
+        ? 'ANOMALIA ATTIVATA: Trafilamento ugello Pilota L1.'
         : 'Ugello Pilota L1 ripristinato.',
       state.faultPilot1Leak ? 'warn' : 'ok'
     );
@@ -1681,8 +1812,8 @@ document.addEventListener('DOMContentLoaded', () => {
     state.faultRupture1 = e.target.checked;
     addLog(
       state.faultRupture1
-        ? 'GUASTO ATTIVATO: Cedimento membrana / spalancamento Regolatore L1 (intervento Monitor L1).'
-        : 'Membrana Regolatore L1 ripristinata.',
+        ? 'GUASTO ATTIVATO: Rottura membrana Regolatore L1! Il Regolatore L1 si spalanca, entra in lavoro il Monitor L1 e la pressione nel TRONCHETTO crolla da Pu alla Pressione di Valle!'
+        : 'Membrana Regolatore L1 ripristinata (il Tronchetto torna a Pu).',
       state.faultRupture1 ? 'warn' : 'ok'
     );
     recalculatePhysics();

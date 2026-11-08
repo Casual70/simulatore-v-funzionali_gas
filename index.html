@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simulatore Verifiche Funzionali Gas - Regolatori Pilotati &amp; Azione Diretta (Tipo 3)</title>
+  <title>Simulatore Verifiche Funzionali Gas - Regolatori Pilotati, Tronchetto &amp; Azione Diretta (Tipo 3)</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
       <div class="badge-tipo3" aria-hidden="true">UNI/PdR 39 · TIPO 3</div>
       <div>
         <h1>Simulatore Cabina REMI &amp; Verifiche Funzionali Gas</h1>
-        <p class="subtitle">Regolatori Pilotati (Fail-Close) vs Azione Diretta (Fail-Open), Prese d'Impulso, Verifica SG, Monitor, Blocchi e 2ª Linea</p>
+        <p class="subtitle">Regolatori Pilotati vs Diretti, Manometro &amp; Sfiato nel Tronchetto (Monitor/Regolatore), Prese d'Impulso, SG e Blocchi</p>
       </div>
     </div>
 
@@ -30,16 +30,16 @@
         <label for="mode-select">Modalità Operativa / Addestramento:</label>
         <select id="mode-select">
           <option value="free">Simulazione Libera P&amp;ID</option>
+          <option value="guided-tronchetto">Procedura Guidata: Uso del Manometro e Sfiato nel TRONCHETTO (Diagnosi Monitor vs Regolatore e Tenuta Monitor)</option>
           <option value="guided-piloted-sg">Procedura Guidata: Verifica SG e Monitor su Regolatore PILOTATO (Ruolo Prese Impulso)</option>
           <option value="guided-direct-sg">Procedura Guidata: Verifica SG e Monitor su Regolatore AZIONE DIRETTA</option>
           <option value="guided-full">Procedura Guidata Completa Tipo 3: Scambio 2ª Linea + SG + Monitor + Blocco OPSO/UPSO</option>
-          <option value="guided-block-l2">Procedura Guidata: Verifica Blocco OPSO/UPSO su 2ª Linea</option>
         </select>
       </div>
 
       <div class="toolbar-actions">
         <button type="button" id="btn-reset" class="btn btn-secondary">Ripristina Impianto</button>
-        <button type="button" id="btn-open-manual" class="btn btn-outline">Guida Pilotati vs Diretti</button>
+        <button type="button" id="btn-open-manual" class="btn btn-outline">Guida Tecnica Tipo 3</button>
       </div>
     </nav>
   </header>
@@ -49,7 +49,7 @@
     <section id="guided-banner" class="guided-banner" aria-live="polite" hidden>
       <div class="guided-header">
         <div class="guided-step-indicator">
-          <span class="step-pill" id="guided-step-num">PASSO 1 / 5</span>
+          <span class="step-pill" id="guided-step-num">PASSO 1 / 4</span>
           <h2 id="guided-step-title">Titolo Passo</h2>
         </div>
         <div class="guided-controls">
@@ -67,7 +67,7 @@
       <section class="pid-panel" aria-labelledby="pid-heading">
         <div class="panel-header">
           <div>
-            <h2 id="pid-heading">Schema P&amp;ID Interattivo con Circuito di Pilotaggio e Prese d'Impulso</h2>
+            <h2 id="pid-heading">Schema P&amp;ID con Manometro nel Tronchetto (tra Monitor e Regolatore) e Valle Linea</h2>
             <p class="tech-badge-line" id="plant-arch-subtitle">
               Architettura: <strong>REGOLATORI PILOTATI (Normalmente Chiusi / Fail-Close)</strong>
             </p>
@@ -78,12 +78,12 @@
               <strong class="kpi-value" id="kpi-pu">24,0 bar</strong>
             </div>
             <div class="kpi-box">
-              <span class="kpi-label">Tronco L1 (P_tr1)</span>
-              <strong class="kpi-value" id="kpi-ptr1">1,50 bar</strong>
+              <span class="kpi-label">Tronchetto L1 (Mon→Reg)</span>
+              <strong class="kpi-value" id="kpi-pint1">24,0 bar</strong>
             </div>
             <div class="kpi-box">
-              <span class="kpi-label">Tronco L2 (P_tr2)</span>
-              <strong class="kpi-value" id="kpi-ptr2">1,50 bar</strong>
+              <span class="kpi-label">Valle L1 (Reg→V2)</span>
+              <strong class="kpi-value" id="kpi-ptr1">1,50 bar</strong>
             </div>
             <div class="kpi-box kpi-highlight" id="kpi-pd-box">
               <span class="kpi-label">Collettore Valle (Pd)</span>
@@ -115,9 +115,8 @@
             </button>
           </div>
 
-          <!-- Stato sintetico dell'altra linea quando si è in modalità Focus singola linea -->
           <div id="other-line-summary" class="other-line-summary" hidden>
-            <span id="other-line-text">2ª Linea: STAND-BY (1,35 bar)</span>
+            <span id="other-line-text">2ª Linea: STAND-BY</span>
           </div>
 
           <div class="zoom-group">
@@ -129,26 +128,25 @@
           </div>
         </div>
 
-        <!-- SVG P&ID Interattivo (Spaziature ampliate, etichette su badge opachi senza sovrapposizioni) -->
+        <!-- SVG P&ID Interattivo -->
         <div class="svg-container" id="svg-scroll-wrap">
-          <svg id="pid-svg" viewBox="0 0 1200 760" role="img" aria-label="Schema P&ID cabina REMI con circuito piloti, preriduttori, prese di impulso a monte o valle di V2, valvole e blocchi">
-            <!-- Sfondo griglia tecnica -->
-            <rect width="1200" height="760" fill="#0b1120" rx="10"/>
+          <svg id="pid-svg" viewBox="0 0 1240 760" role="img" aria-label="Schema P&ID cabina REMI con Tronchetto tra Monitor e Regolatore (manometro e sfiato), circuito piloti, prese di impulso e valvole">
+            <rect width="1240" height="760" fill="#0b1120" rx="10"/>
 
             <!-- Intestazioni Zone -->
             <g id="svg-zone-headers">
-              <text x="24" y="28" class="svg-zone-label">INGRESSO MONTE (Pu)</text>
-              <text x="410" y="28" class="svg-zone-label">TRENO DI SICUREZZA E REGOLAZIONE (BLOCCO + MONITOR + REGOLATORE)</text>
-              <text x="985" y="28" class="svg-zone-label">COLLETTORE VALLE (Pd)</text>
+              <text x="20" y="28" class="svg-zone-label">INGRESSO MONTE (Pu)</text>
+              <text x="380" y="28" class="svg-zone-label">TRENO DI SICUREZZA E REGOLAZIONE (BLOCCO → MONITOR → TRONCHETTO → REGOLATORE)</text>
+              <text x="1030" y="28" class="svg-zone-label">COLLETTORE VALLE (Pd)</text>
             </g>
 
             <!-- Collettore Monte -->
             <g id="svg-upstream-manifold">
-              <path d="M 18 380 L 86 380" class="pipe-main pipe-hp-stroke"/>
-              <path id="pipe-up-vertical" d="M 86 235 L 86 575" class="pipe-main pipe-hp-stroke"/>
+              <path d="M 16 380 L 82 380" class="pipe-main pipe-hp-stroke"/>
+              <path id="pipe-up-vertical" d="M 82 235 L 82 575" class="pipe-main pipe-hp-stroke"/>
 
               <!-- Manometro Monte -->
-              <g transform="translate(50, 305)">
+              <g transform="translate(46, 305)">
                 <line x1="0" y1="28" x2="0" y2="75" stroke="#94a3b8" stroke-width="2.5"/>
                 <circle cx="0" cy="0" r="27" class="gauge-face"/>
                 <text x="0" y="-5" class="gauge-title">MONTE Pu</text>
@@ -158,94 +156,90 @@
 
             <!-- ==================== LINEA 1 (PRINCIPALE - ALTO: y = 44 .. 354) ==================== -->
             <g id="svg-line-1">
-              <!-- Contenitore Linea 1 -->
-              <rect x="108" y="44" width="872" height="310" rx="10" class="line-box" id="box-line-1"/>
-              <!-- Fascia Intestazione Linea 1 (separata dai tubi d'impulso!) -->
-              <rect x="108" y="44" width="872" height="34" rx="10" fill="#162033"/>
-              <line x1="108" y1="78" x2="980" y2="78" stroke="#334155" stroke-width="1"/>
-              <text x="126" y="66" class="line-title" id="svg-l1-title">LINEA 1 — PRINCIPALE (REGOLATORE PILOTATO FAIL-CLOSE)</text>
-              <text x="962" y="66" text-anchor="end" class="line-status-badge" id="svg-l1-badge">IN EROGAZIONE ATTIVA</text>
+              <rect x="104" y="44" width="916" height="310" rx="10" class="line-box" id="box-line-1"/>
+              <rect x="104" y="44" width="916" height="34" rx="10" fill="#162033"/>
+              <line x1="104" y1="78" x2="1020" y2="78" stroke="#334155" stroke-width="1"/>
+              <text x="122" y="66" class="line-title" id="svg-l1-title">LINEA 1 — PRINCIPALE (REGOLATORE PILOTATO FAIL-CLOSE)</text>
+              <text x="1002" y="66" text-anchor="end" class="line-status-badge" id="svg-l1-badge">IN EROGAZIONE ATTIVA</text>
 
-              <!-- Tubazioni Principali Linea 1 (y = 235) -->
-              <path id="pipe-l1-in" d="M 86 235 L 180 235" class="pipe-segment pipe-hp-stroke"/>
-              <path id="pipe-l1-mid" d="M 220 235 L 826 235" class="pipe-segment pipe-mp-stroke"/>
-              <path id="pipe-l1-out" d="M 866 235 L 1020 235" class="pipe-segment pipe-mp-stroke"/>
+              <!-- Tubazioni Principali Linea 1 (y = 235) divise in: Monte, Tronchetto (tra Monitor e Regolatore) e Valle Linea (tra Regolatore e V2) -->
+              <path id="pipe-l1-in" d="M 82 235 L 435 235" class="pipe-segment pipe-hp-stroke"/>
+              <!-- TRONCHETTO L1 tra Monitor (x=435) e Regolatore Principale (x=665) -->
+              <path id="pipe-l1-tronchetto" d="M 435 235 L 665 235" class="pipe-segment pipe-hp-stroke"/>
+              <!-- VALLE LINEA L1 tra Regolatore Principale (x=665) e V2-L1 (x=880) -->
+              <path id="pipe-l1-mid" d="M 665 235 L 860 235" class="pipe-segment pipe-mp-stroke"/>
+              <path id="pipe-l1-out" d="M 900 235 L 1060 235" class="pipe-segment pipe-mp-stroke"/>
 
               <!-- Tracciati Prese d'Impulso L1 (su 3 livelli ben distanziati: y=98, y=122, y=146) -->
-              <!-- Livello 1 (y=98): Impulso Blocco SB-L1 -->
-              <path id="imp-blk-l1" d="M 320 190 L 320 98 L 732 98 L 732 235" class="impulse-line"/>
-              <circle cx="732" cy="235" r="4" fill="#94a3b8"/>
+              <!-- Livello 1 (y=98): Impulso Blocco SB-L1 (preleva a valle del regolatore x=775) -->
+              <path id="imp-blk-l1" d="M 305 190 L 305 98 L 775 98 L 775 235" class="impulse-line"/>
+              <circle cx="775" cy="235" r="4" fill="#94a3b8"/>
 
-              <!-- Livello 2 (y=122): Impulso Monitor MON-L1 -->
-              <path id="imp-mon-l1" d="M 475 186 L 475 122 L 752 122 L 752 235" class="impulse-line"/>
-              <circle cx="752" cy="235" r="4" fill="#94a3b8"/>
+              <!-- Livello 2 (y=122): Impulso Monitor MON-L1 (preleva a valle del regolatore x=792) -->
+              <path id="imp-mon-l1" d="M 435 186 L 435 122 L 792 122 L 792 235" class="impulse-line"/>
+              <circle cx="792" cy="235" r="4" fill="#94a3b8"/>
 
-              <!-- Livello 3 (y=146): Impulso Regolatore REG-L1 (dinamico: TRONCO x=772 vs VALLE V2 x=915) -->
-              <path id="imp-reg-l1" d="M 630 186 L 630 146 L 772 146 L 772 235" class="impulse-line"/>
-              <circle cx="772" cy="235" r="5" id="tap-dot-reg-l1" fill="#38bdf8" stroke="#0b1120" stroke-width="1.5"/>
+              <!-- Livello 3 (y=146): Impulso Regolatore REG-L1 (dinamico: VALLE REG x=810 vs COLLETTORE VALLE V2 x=955) -->
+              <path id="imp-reg-l1" d="M 665 186 L 665 146 L 810 146 L 810 235" class="impulse-line"/>
+              <circle cx="810" cy="235" r="5" id="tap-dot-reg-l1" fill="#38bdf8" stroke="#0b1120" stroke-width="1.5"/>
 
               <!-- Livello 4 (y=172): Circuito Alimentazione Piloti da Monte (solo Regolatori Pilotati) -->
               <g id="svg-pilot-supply-l1">
-                <path d="M 255 235 L 255 172 L 605 172" class="pilot-supply-line"/>
-                <line x1="450" y1="172" x2="450" y2="192" class="pilot-supply-line"/>
-                <line x1="605" y1="172" x2="605" y2="192" class="pilot-supply-line"/>
-                <circle cx="255" cy="235" r="4" fill="#ef4444"/>
+                <path d="M 245 235 L 245 172 L 640 172" class="pilot-supply-line"/>
+                <line x1="415" y1="172" x2="415" y2="192" class="pilot-supply-line"/>
+                <line x1="640" y1="172" x2="640" y2="192" class="pilot-supply-line"/>
+                <circle cx="245" cy="235" r="4" fill="#ef4444"/>
 
-                <!-- Rubinetto Alimentazione Pilota Monitor L1 (con pill opaca) -->
-                <g class="svg-interactive" id="svg-btn-palim-mon-l1" transform="translate(405, 172)">
+                <g class="svg-interactive" id="svg-btn-palim-mon-l1" transform="translate(380, 172)">
                   <rect x="-44" y="-11" width="88" height="22" rx="11" class="svg-pill-bg"/>
                   <circle cx="-31" cy="0" r="6.5" id="dot-palim-mon-l1" class="cock-open"/>
                   <text x="6" y="3.5" class="cock-pill-text" id="lbl-palim-mon-l1">Alim.Mon: ON</text>
                 </g>
 
-                <!-- Rubinetto Alimentazione Pilota Regolatore L1 (con pill opaca) -->
-                <g class="svg-interactive" id="svg-btn-palim-reg-l1" transform="translate(555, 172)">
+                <g class="svg-interactive" id="svg-btn-palim-reg-l1" transform="translate(605, 172)">
                   <rect x="-46" y="-11" width="92" height="22" rx="11" class="svg-pill-bg"/>
                   <circle cx="-33" cy="0" r="6.5" id="dot-palim-reg-l1" class="cock-open"/>
                   <text x="6" y="3.5" class="cock-pill-text" id="lbl-palim-reg-l1">Alim.Pil: ON</text>
                 </g>
               </g>
 
-              <!-- Rubinetti sulle Prese d'Impulso L1 (con pill opache ad alto contrasto che non si sovrappongono mai alle linee) -->
-              <!-- Rubinetto 3 vie Impulso Blocco L1 (y=98) -->
-              <g class="svg-interactive" id="svg-btn-rblk-l1" transform="translate(395, 98)">
+              <!-- Rubinetti sulle Prese d'Impulso L1 con pill opache -->
+              <g class="svg-interactive" id="svg-btn-rblk-l1" transform="translate(380, 98)">
                 <rect x="-56" y="-11" width="112" height="22" rx="11" class="svg-pill-bg"/>
                 <circle cx="-42" cy="0" r="6.5" id="dot-rblk-l1" class="cock-open"/>
                 <text x="6" y="3.5" class="cock-pill-text" id="lbl-rblk-l1">Imp.Blk: LINEA</text>
               </g>
 
-              <!-- Rubinetto Impulso Monitor L1 (y=122) -->
-              <g class="svg-interactive" id="svg-btn-rmon-l1" transform="translate(550, 122)">
+              <g class="svg-interactive" id="svg-btn-rmon-l1" transform="translate(530, 122)">
                 <rect x="-52" y="-11" width="104" height="22" rx="11" class="svg-pill-bg"/>
                 <circle cx="-38" cy="0" r="6.5" id="dot-rmon-l1" class="cock-open"/>
                 <text x="6" y="3.5" class="cock-pill-text" id="lbl-rmon-l1">Imp.Mon: ON</text>
               </g>
 
-              <!-- Rubinetto Impulso Regolatore L1 (y=146) -->
-              <g class="svg-interactive" id="svg-btn-rreg-l1" transform="translate(702, 146)">
+              <g class="svg-interactive" id="svg-btn-rreg-l1" transform="translate(738, 146)">
                 <rect x="-62" y="-11" width="124" height="22" rx="11" class="svg-pill-bg"/>
                 <circle cx="-48" cy="0" r="6.5" id="dot-rreg-l1" class="cock-open"/>
                 <text x="6" y="3.5" class="cock-pill-text" id="lbl-rreg-l1">Imp.Reg: VALLE V2</text>
               </g>
 
               <!-- By-pass V1-L1 -->
-              <path id="pipe-bp-l1" d="M 160 235 L 160 305 L 240 305 L 240 235" class="bypass-line"/>
-              <g class="svg-interactive" id="svg-btn-bp-l1" transform="translate(200, 305)">
+              <path id="pipe-bp-l1" d="M 155 235 L 155 305 L 235 305 L 235 235" class="bypass-line"/>
+              <g class="svg-interactive" id="svg-btn-bp-l1" transform="translate(195, 305)">
                 <rect x="-32" y="-16" width="64" height="42" rx="6" class="comp-hit"/>
                 <polygon points="-11,-7 11,7 11,-7 -11,7" id="shape-bp-l1" class="valve-closed"/>
                 <text x="0" y="20" class="comp-sublabel">BP-L1</text>
               </g>
 
-              <!-- Valvola Monte V1-L1 -->
-              <g class="svg-interactive" id="svg-btn-v1-l1" transform="translate(200, 235)">
+              <!-- Valvola Monte V1-L1 (x=195) -->
+              <g class="svg-interactive" id="svg-btn-v1-l1" transform="translate(195, 235)">
                 <rect x="-30" y="-34" width="60" height="62" rx="6" class="comp-hit"/>
                 <polygon points="-17,-12 17,12 17,-12 -17,12" id="shape-v1-l1" class="valve-open"/>
                 <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
                 <text x="0" y="-19" class="comp-label">V1-L1</text>
               </g>
 
-              <!-- Valvola di Blocco SB-L1 -->
-              <g class="svg-interactive" id="svg-btn-sb-l1" transform="translate(320, 235)">
+              <!-- Valvola di Blocco SB-L1 (x=305) -->
+              <g class="svg-interactive" id="svg-btn-sb-l1" transform="translate(305, 235)">
                 <rect x="-46" y="-52" width="92" height="122" rx="8" class="comp-hit"/>
                 <rect x="-24" y="-44" width="48" height="22" rx="4" id="head-sb-l1" class="slam-armed"/>
                 <line x1="0" y1="-22" x2="0" y2="0" stroke="#e2e8f0" stroke-width="3"/>
@@ -255,9 +249,9 @@
                 <text x="0" y="47" class="comp-sublabel" id="sub-sb-l1">Max 1.90 | Min 0.80</text>
               </g>
 
-              <!-- Regolatore MONITOR L1 -->
-              <g class="svg-interactive" id="svg-btn-mon-l1" transform="translate(475, 235)">
-                <rect x="-48" y="-52" width="96" height="124" rx="8" class="comp-hit"/>
+              <!-- Regolatore MONITOR L1 (x=435) -->
+              <g class="svg-interactive" id="svg-btn-mon-l1" transform="translate(435, 235)">
+                <rect x="-46" y="-52" width="92" height="124" rx="8" class="comp-hit"/>
                 <ellipse cx="0" cy="-35" rx="24" ry="11" class="pilot-dome"/>
                 <line x1="0" y1="-24" x2="0" y2="-14" stroke="#94a3b8" stroke-width="3"/>
                 <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-mon-l1" class="reg-monitor"/>
@@ -266,9 +260,24 @@
                 <text x="0" y="61" class="comp-micro" id="pmot-mon-l1">Pmot: 3.20 bar</text>
               </g>
 
-              <!-- Regolatore PRINCIPALE L1 -->
-              <g class="svg-interactive" id="svg-btn-reg-l1" transform="translate(630, 235)">
-                <rect x="-50" y="-52" width="100" height="124" rx="8" class="comp-hit"/>
+              <!-- ★ TRONCHETTO INTERMEDIO L1 (tra Monitor e Regolatore, x=548): Sfiato SF-INT1 + Manometro TRONCHETTO ★ -->
+              <g class="svg-interactive" id="svg-btn-sfint-l1" transform="translate(548, 235)">
+                <line x1="0" y1="0" x2="0" y2="-34" stroke="#fbbf24" stroke-width="2.5"/>
+                <rect x="-44" y="-58" width="88" height="92" rx="6" class="comp-hit"/>
+                <circle cx="0" cy="-34" r="8" id="dot-sfint-l1" class="cock-closed"/>
+                <rect x="-42" y="-56" width="84" height="15" rx="4" fill="#0b1120"/>
+                <text x="0" y="-45" class="cock-pill-text" id="lbl-sfint-l1">Sfiato Tronch.</text>
+
+                <!-- Manometro nel Tronchetto tra Monitor e Regolatore -->
+                <line x1="0" y1="0" x2="0" y2="40" stroke="#f59e0b" stroke-width="2.5"/>
+                <circle cx="0" cy="67" r="27" class="gauge-face" id="face-gauge-int-l1"/>
+                <text x="0" y="62" class="gauge-title">TRONCHETTO</text>
+                <text x="0" y="78" id="svg-gauge-int-l1" class="gauge-reading">24.0</text>
+              </g>
+
+              <!-- Regolatore PRINCIPALE L1 (x=665) -->
+              <g class="svg-interactive" id="svg-btn-reg-l1" transform="translate(665, 235)">
+                <rect x="-48" y="-52" width="96" height="124" rx="8" class="comp-hit"/>
                 <ellipse cx="0" cy="-35" rx="24" ry="11" class="pilot-dome-active"/>
                 <line x1="0" y1="-24" x2="0" y2="-14" stroke="#38bdf8" stroke-width="3"/>
                 <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-reg-l1" class="reg-active"/>
@@ -277,25 +286,24 @@
                 <text x="0" y="61" class="comp-micro" id="pmot-reg-l1">Pmot: 2.15 bar</text>
               </g>
 
-              <!-- Candela di sfiato SF-L1 -->
-              <g class="svg-interactive" id="svg-btn-sf-l1" transform="translate(798, 235)">
-                <line x1="0" y1="0" x2="0" y2="-42" stroke="#fbbf24" stroke-width="2.5"/>
-                <rect x="-42" y="-68" width="84" height="44" rx="6" class="comp-hit"/>
-                <circle cx="0" cy="-42" r="8.5" id="dot-sf-l1" class="cock-closed"/>
-                <rect x="-40" y="-66" width="80" height="16" rx="4" fill="#0b1120"/>
-                <text x="0" y="-55" class="cock-pill-text" id="lbl-sf-l1">Sfiato SF-L1</text>
+              <!-- Candela di sfiato Valle Linea SF-L1 + Manometro Valle L1 (tra Regolatore e V2, x=825) -->
+              <g class="svg-interactive" id="svg-btn-sf-l1" transform="translate(825, 235)">
+                <line x1="0" y1="0" x2="0" y2="-36" stroke="#38bdf8" stroke-width="2.5"/>
+                <rect x="-40" y="-60" width="80" height="40" rx="6" class="comp-hit"/>
+                <circle cx="0" cy="-36" r="8" id="dot-sf-l1" class="cock-closed"/>
+                <rect x="-38" y="-58" width="76" height="15" rx="4" fill="#0b1120"/>
+                <text x="0" y="-47" class="cock-pill-text" id="lbl-sf-l1">Sfiato SF-L1</text>
               </g>
 
-              <!-- Manometro di Tronco Linea 1 (Ingrandito r=26 con etichetta esterna nitida) -->
-              <g transform="translate(798, 302)">
+              <g transform="translate(825, 302)">
                 <line x1="0" y1="-67" x2="0" y2="-26" stroke="#94a3b8" stroke-width="2.5"/>
                 <circle cx="0" cy="0" r="26" class="gauge-face"/>
-                <text x="0" y="-5" class="gauge-title">TRONCO L1</text>
+                <text x="0" y="-5" class="gauge-title">P VALLE L1</text>
                 <text x="0" y="11" id="svg-gauge-l1" class="gauge-reading">1.50</text>
               </g>
 
-              <!-- Valvola Valle V2-L1 -->
-              <g class="svg-interactive" id="svg-btn-v2-l1" transform="translate(846, 235)">
+              <!-- Valvola Valle V2-L1 (x=880) -->
+              <g class="svg-interactive" id="svg-btn-v2-l1" transform="translate(880, 235)">
                 <rect x="-30" y="-34" width="60" height="62" rx="6" class="comp-hit"/>
                 <polygon points="-17,-12 17,12 17,-12 -17,12" id="shape-v2-l1" class="valve-open"/>
                 <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
@@ -305,41 +313,42 @@
 
             <!-- ==================== LINEA 2 (SECONDA LINEA / RISERVA - BASSO: y = 384 .. 694) ==================== -->
             <g id="svg-line-2">
-              <rect x="108" y="384" width="872" height="310" rx="10" class="line-box" id="box-line-2"/>
-              <rect x="108" y="384" width="872" height="34" rx="10" fill="#162033"/>
-              <line x1="108" y1="418" x2="980" y2="418" stroke="#334155" stroke-width="1"/>
-              <text x="126" y="406" class="line-title" id="svg-l2-title">LINEA 2 — SECONDA LINEA DI RISERVA (REGOLATORE PILOTATO FAIL-CLOSE)</text>
-              <text x="962" y="406" text-anchor="end" class="line-status-badge badge-standby" id="svg-l2-badge">STAND-BY AUTOMATICO</text>
+              <rect x="104" y="384" width="916" height="310" rx="10" class="line-box" id="box-line-2"/>
+              <rect x="104" y="384" width="916" height="34" rx="10" fill="#162033"/>
+              <line x1="104" y1="418" x2="1020" y2="418" stroke="#334155" stroke-width="1"/>
+              <text x="122" y="406" class="line-title" id="svg-l2-title">LINEA 2 — SECONDA LINEA DI RISERVA (REGOLATORE PILOTATO FAIL-CLOSE)</text>
+              <text x="1002" y="406" text-anchor="end" class="line-status-badge badge-standby" id="svg-l2-badge">STAND-BY AUTOMATICO</text>
 
               <!-- Tubazioni Principali Linea 2 (y = 575) -->
-              <path id="pipe-l2-in" d="M 86 575 L 180 575" class="pipe-segment pipe-hp-stroke"/>
-              <path id="pipe-l2-mid" d="M 220 575 L 826 575" class="pipe-segment pipe-mp-stroke"/>
-              <path id="pipe-l2-out" d="M 866 575 L 1020 575" class="pipe-segment pipe-mp-stroke"/>
+              <path id="pipe-l2-in" d="M 82 575 L 435 575" class="pipe-segment pipe-hp-stroke"/>
+              <path id="pipe-l2-tronchetto" d="M 435 575 L 665 575" class="pipe-segment pipe-hp-stroke"/>
+              <path id="pipe-l2-mid" d="M 665 575 L 860 575" class="pipe-segment pipe-mp-stroke"/>
+              <path id="pipe-l2-out" d="M 900 575 L 1060 575" class="pipe-segment pipe-mp-stroke"/>
 
               <!-- Tracciati Prese d'Impulso L2 (y=438, y=462, y=486) -->
-              <path id="imp-blk-l2" d="M 320 530 L 320 438 L 732 438 L 732 575" class="impulse-line"/>
-              <circle cx="732" cy="575" r="4" fill="#94a3b8"/>
+              <path id="imp-blk-l2" d="M 305 530 L 305 438 L 775 438 L 775 575" class="impulse-line"/>
+              <circle cx="775" cy="575" r="4" fill="#94a3b8"/>
 
-              <path id="imp-mon-l2" d="M 475 526 L 475 462 L 752 462 L 752 575" class="impulse-line"/>
-              <circle cx="752" cy="575" r="4" fill="#94a3b8"/>
+              <path id="imp-mon-l2" d="M 435 526 L 435 462 L 792 462 L 792 575" class="impulse-line"/>
+              <circle cx="792" cy="575" r="4" fill="#94a3b8"/>
 
-              <path id="imp-reg-l2" d="M 630 526 L 630 486 L 772 486 L 772 575" class="impulse-line"/>
-              <circle cx="772" cy="575" r="5" id="tap-dot-reg-l2" fill="#38bdf8" stroke="#0b1120" stroke-width="1.5"/>
+              <path id="imp-reg-l2" d="M 665 526 L 665 486 L 810 486 L 810 575" class="impulse-line"/>
+              <circle cx="810" cy="575" r="5" id="tap-dot-reg-l2" fill="#38bdf8" stroke="#0b1120" stroke-width="1.5"/>
 
               <!-- Livello 4 (y=512): Circuito Alimentazione Piloti da Monte L2 -->
               <g id="svg-pilot-supply-l2">
-                <path d="M 255 575 L 255 512 L 605 512" class="pilot-supply-line"/>
-                <line x1="450" y1="512" x2="450" y2="532" class="pilot-supply-line"/>
-                <line x1="605" y1="512" x2="605" y2="532" class="pilot-supply-line"/>
-                <circle cx="255" cy="575" r="4" fill="#ef4444"/>
+                <path d="M 245 575 L 245 512 L 640 512" class="pilot-supply-line"/>
+                <line x1="415" y1="512" x2="415" y2="532" class="pilot-supply-line"/>
+                <line x1="640" y1="512" x2="640" y2="532" class="pilot-supply-line"/>
+                <circle cx="245" cy="575" r="4" fill="#ef4444"/>
 
-                <g class="svg-interactive" id="svg-btn-palim-mon-l2" transform="translate(405, 512)">
+                <g class="svg-interactive" id="svg-btn-palim-mon-l2" transform="translate(380, 512)">
                   <rect x="-44" y="-11" width="88" height="22" rx="11" class="svg-pill-bg"/>
                   <circle cx="-31" cy="0" r="6.5" id="dot-palim-mon-l2" class="cock-open"/>
                   <text x="6" y="3.5" class="cock-pill-text" id="lbl-palim-mon-l2">Alim.Mon: ON</text>
                 </g>
 
-                <g class="svg-interactive" id="svg-btn-palim-reg-l2" transform="translate(555, 512)">
+                <g class="svg-interactive" id="svg-btn-palim-reg-l2" transform="translate(605, 512)">
                   <rect x="-46" y="-11" width="92" height="22" rx="11" class="svg-pill-bg"/>
                   <circle cx="-33" cy="0" r="6.5" id="dot-palim-reg-l2" class="cock-open"/>
                   <text x="6" y="3.5" class="cock-pill-text" id="lbl-palim-reg-l2">Alim.Pil: ON</text>
@@ -347,34 +356,34 @@
               </g>
 
               <!-- Rubinetti Prese d'Impulso L2 con pill opache -->
-              <g class="svg-interactive" id="svg-btn-rblk-l2" transform="translate(395, 438)">
+              <g class="svg-interactive" id="svg-btn-rblk-l2" transform="translate(380, 438)">
                 <rect x="-56" y="-11" width="112" height="22" rx="11" class="svg-pill-bg"/>
                 <circle cx="-42" cy="0" r="6.5" id="dot-rblk-l2" class="cock-open"/>
                 <text x="6" y="3.5" class="cock-pill-text" id="lbl-rblk-l2">Imp.Blk: LINEA</text>
               </g>
 
-              <g class="svg-interactive" id="svg-btn-rmon-l2" transform="translate(550, 462)">
+              <g class="svg-interactive" id="svg-btn-rmon-l2" transform="translate(530, 462)">
                 <rect x="-52" y="-11" width="104" height="22" rx="11" class="svg-pill-bg"/>
                 <circle cx="-38" cy="0" r="6.5" id="dot-rmon-l2" class="cock-open"/>
                 <text x="6" y="3.5" class="cock-pill-text" id="lbl-rmon-l2">Imp.Mon: ON</text>
               </g>
 
-              <g class="svg-interactive" id="svg-btn-rreg-l2" transform="translate(702, 486)">
+              <g class="svg-interactive" id="svg-btn-rreg-l2" transform="translate(738, 486)">
                 <rect x="-62" y="-11" width="124" height="22" rx="11" class="svg-pill-bg"/>
                 <circle cx="-48" cy="0" r="6.5" id="dot-rreg-l2" class="cock-open"/>
                 <text x="6" y="3.5" class="cock-pill-text" id="lbl-rreg-l2">Imp.Reg: VALLE V2</text>
               </g>
 
               <!-- By-pass V1-L2 -->
-              <path id="pipe-bp-l2" d="M 160 575 L 160 645 L 240 645 L 240 575" class="bypass-line"/>
-              <g class="svg-interactive" id="svg-btn-bp-l2" transform="translate(200, 645)">
+              <path id="pipe-bp-l2" d="M 155 575 L 155 645 L 235 645 L 235 575" class="bypass-line"/>
+              <g class="svg-interactive" id="svg-btn-bp-l2" transform="translate(195, 645)">
                 <rect x="-32" y="-16" width="64" height="42" rx="6" class="comp-hit"/>
                 <polygon points="-11,-7 11,7 11,-7 -11,7" id="shape-bp-l2" class="valve-closed"/>
                 <text x="0" y="20" class="comp-sublabel">BP-L2</text>
               </g>
 
               <!-- Valvola Monte V1-L2 -->
-              <g class="svg-interactive" id="svg-btn-v1-l2" transform="translate(200, 575)">
+              <g class="svg-interactive" id="svg-btn-v1-l2" transform="translate(195, 575)">
                 <rect x="-30" y="-34" width="60" height="62" rx="6" class="comp-hit"/>
                 <polygon points="-17,-12 17,12 17,-12 -17,12" id="shape-v1-l2" class="valve-open"/>
                 <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
@@ -382,7 +391,7 @@
               </g>
 
               <!-- Valvola di Blocco SB-L2 -->
-              <g class="svg-interactive" id="svg-btn-sb-l2" transform="translate(320, 575)">
+              <g class="svg-interactive" id="svg-btn-sb-l2" transform="translate(305, 575)">
                 <rect x="-46" y="-52" width="92" height="122" rx="8" class="comp-hit"/>
                 <rect x="-24" y="-44" width="48" height="22" rx="4" id="head-sb-l2" class="slam-armed"/>
                 <line x1="0" y1="-22" x2="0" y2="0" stroke="#e2e8f0" stroke-width="3"/>
@@ -393,8 +402,8 @@
               </g>
 
               <!-- Regolatore MONITOR L2 -->
-              <g class="svg-interactive" id="svg-btn-mon-l2" transform="translate(475, 575)">
-                <rect x="-48" y="-52" width="96" height="124" rx="8" class="comp-hit"/>
+              <g class="svg-interactive" id="svg-btn-mon-l2" transform="translate(435, 575)">
+                <rect x="-46" y="-52" width="92" height="124" rx="8" class="comp-hit"/>
                 <ellipse cx="0" cy="-35" rx="24" ry="11" class="pilot-dome"/>
                 <line x1="0" y1="-24" x2="0" y2="-14" stroke="#94a3b8" stroke-width="3"/>
                 <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-mon-l2" class="reg-monitor"/>
@@ -403,9 +412,23 @@
                 <text x="0" y="61" class="comp-micro" id="pmot-mon-l2">Pmot: 3.20 bar</text>
               </g>
 
+              <!-- ★ TRONCHETTO INTERMEDIO L2 (tra Monitor L2 e Regolatore L2, x=548) ★ -->
+              <g class="svg-interactive" id="svg-btn-sfint-l2" transform="translate(548, 575)">
+                <line x1="0" y1="0" x2="0" y2="-34" stroke="#fbbf24" stroke-width="2.5"/>
+                <rect x="-44" y="-58" width="88" height="92" rx="6" class="comp-hit"/>
+                <circle cx="0" cy="-34" r="8" id="dot-sfint-l2" class="cock-closed"/>
+                <rect x="-42" y="-56" width="84" height="15" rx="4" fill="#0b1120"/>
+                <text x="0" y="-45" class="cock-pill-text" id="lbl-sfint-l2">Sfiato Tronch.</text>
+
+                <line x1="0" y1="0" x2="0" y2="40" stroke="#f59e0b" stroke-width="2.5"/>
+                <circle cx="0" cy="67" r="27" class="gauge-face" id="face-gauge-int-l2"/>
+                <text x="0" y="62" class="gauge-title">TRONCHETTO</text>
+                <text x="0" y="78" id="svg-gauge-int-l2" class="gauge-reading">24.0</text>
+              </g>
+
               <!-- Regolatore PRINCIPALE L2 (Seconda Linea) -->
-              <g class="svg-interactive" id="svg-btn-reg-l2" transform="translate(630, 575)">
-                <rect x="-50" y="-52" width="100" height="124" rx="8" class="comp-hit"/>
+              <g class="svg-interactive" id="svg-btn-reg-l2" transform="translate(665, 575)">
+                <rect x="-48" y="-52" width="96" height="124" rx="8" class="comp-hit"/>
                 <ellipse cx="0" cy="-35" rx="24" ry="11" class="pilot-dome-active"/>
                 <line x1="0" y1="-24" x2="0" y2="-14" stroke="#38bdf8" stroke-width="3"/>
                 <polygon points="-22,-14 22,14 22,-14 -22,14" id="shape-reg-l2" class="reg-standby"/>
@@ -414,25 +437,24 @@
                 <text x="0" y="61" class="comp-micro" id="pmot-reg-l2">Pmot: 1.50 bar</text>
               </g>
 
-              <!-- Candela di sfiato SF-L2 -->
-              <g class="svg-interactive" id="svg-btn-sf-l2" transform="translate(798, 575)">
-                <line x1="0" y1="0" x2="0" y2="-42" stroke="#fbbf24" stroke-width="2.5"/>
-                <rect x="-42" y="-68" width="84" height="44" rx="6" class="comp-hit"/>
-                <circle cx="0" cy="-42" r="8.5" id="dot-sf-l2" class="cock-closed"/>
-                <rect x="-40" y="-66" width="80" height="16" rx="4" fill="#0b1120"/>
-                <text x="0" y="-55" class="cock-pill-text" id="lbl-sf-l2">Sfiato SF-L2</text>
+              <!-- Candela di sfiato SF-L2 + Manometro P VALLE L2 (x=825) -->
+              <g class="svg-interactive" id="svg-btn-sf-l2" transform="translate(825, 575)">
+                <line x1="0" y1="0" x2="0" y2="-36" stroke="#38bdf8" stroke-width="2.5"/>
+                <rect x="-40" y="-60" width="80" height="40" rx="6" class="comp-hit"/>
+                <circle cx="0" cy="-36" r="8" id="dot-sf-l2" class="cock-closed"/>
+                <rect x="-38" y="-58" width="76" height="15" rx="4" fill="#0b1120"/>
+                <text x="0" y="-47" class="cock-pill-text" id="lbl-sf-l2">Sfiato SF-L2</text>
               </g>
 
-              <!-- Manometro di Tronco Linea 2 -->
-              <g transform="translate(798, 642)">
+              <g transform="translate(825, 642)">
                 <line x1="0" y1="-67" x2="0" y2="-26" stroke="#94a3b8" stroke-width="2.5"/>
                 <circle cx="0" cy="0" r="26" class="gauge-face"/>
-                <text x="0" y="-5" class="gauge-title">TRONCO L2</text>
+                <text x="0" y="-5" class="gauge-title">P VALLE L2</text>
                 <text x="0" y="11" id="svg-gauge-l2" class="gauge-reading">1.50</text>
               </g>
 
-              <!-- Valvola Valle V2-L2 -->
-              <g class="svg-interactive" id="svg-btn-v2-l2" transform="translate(846, 575)">
+              <!-- Valvola Valle V2-L2 (x=880) -->
+              <g class="svg-interactive" id="svg-btn-v2-l2" transform="translate(880, 575)">
                 <rect x="-30" y="-34" width="60" height="62" rx="6" class="comp-hit"/>
                 <polygon points="-17,-12 17,12 17,-12 -17,12" id="shape-v2-l2" class="valve-open"/>
                 <circle cx="0" cy="0" r="5" fill="#f8fafc"/>
@@ -442,12 +464,12 @@
 
             <!-- ==================== COLLETTORE DI VALLE E VALVOLA DI SFIORO ==================== -->
             <g id="svg-downstream-manifold">
-              <path d="M 1020 235 L 1020 575" class="pipe-main pipe-mp-stroke" id="pipe-manifold-out"/>
-              <path d="M 1020 405 L 1170 405" class="pipe-main pipe-mp-stroke" id="pipe-outlet-main"/>
+              <path d="M 1060 235 L 1060 575" class="pipe-main pipe-mp-stroke" id="pipe-manifold-out"/>
+              <path d="M 1060 405 L 1215 405" class="pipe-main pipe-mp-stroke" id="pipe-outlet-main"/>
 
               <!-- Valvola di Sfioro (VS) sul collettore di valle -->
-              <g class="svg-interactive" id="svg-btn-vs" transform="translate(1090, 235)">
-                <line x1="-70" y1="0" x2="0" y2="0" stroke="#38bdf8" stroke-width="5"/>
+              <g class="svg-interactive" id="svg-btn-vs" transform="translate(1135, 235)">
+                <line x1="-75" y1="0" x2="0" y2="0" stroke="#38bdf8" stroke-width="5"/>
                 <line x1="0" y1="0" x2="0" y2="-45" stroke="#fbbf24" stroke-width="3"/>
                 <rect x="-36" y="-44" width="72" height="68" rx="6" class="comp-hit"/>
                 <polygon points="-15,-18 15,-18 0,5" id="shape-vs" class="relief-closed"/>
@@ -456,7 +478,7 @@
               </g>
 
               <!-- Manometro Collettore Valle (Pd) -->
-              <g id="svg-gauge-pd-group" transform="translate(1105, 500)">
+              <g id="svg-gauge-pd-group" transform="translate(1145, 500)">
                 <line x1="0" y1="-95" x2="0" y2="-30" stroke="#94a3b8" stroke-width="2.5"/>
                 <circle cx="0" cy="0" r="30" class="gauge-face gauge-face-main"/>
                 <text x="0" y="-6" class="gauge-title">Pd VALLE</text>
@@ -467,12 +489,12 @@
         </div>
 
         <div class="pid-legend">
-          <span><i class="dot dot-hp"></i> Monte (Pu) / Alim. Pilota</span>
+          <span><i class="dot dot-hp"></i> Pressione Monte (Pu)</span>
           <span><i class="dot dot-mp"></i> Pressione Valle (Pd)</span>
-          <span><i class="dot dot-green"></i> Aperto / In Regolazione</span>
-          <span><i class="dot dot-amber"></i> Monitor / Riserva / Test</span>
+          <span><i class="dot dot-green"></i> Organo Aperto / Attivo</span>
+          <span><i class="dot dot-amber"></i> Monitor / Tronchetto / Riserva</span>
           <span><i class="dot dot-red"></i> Chiuso / Bloccato</span>
-          <span class="legend-hint">💡 Usa i pulsanti "Focus Solo 1ª / 2ª Linea" o lo Zoom per ingrandire i dettagli</span>
+          <span class="legend-hint">💡 Osserva il Manometro TRONCHETTO (tra Monitor e Regolatore): segna Pu se lavora il Regolatore, o Pd se lavora il Monitor!</span>
         </div>
       </section>
 
@@ -482,7 +504,7 @@
         <section class="card inspector-card" aria-labelledby="inspector-title">
           <div class="card-header">
             <span class="card-tag" id="inspector-tag">ORGANO SELEZIONATO</span>
-            <h2 id="inspector-title">Regolatore Principale L1</h2>
+            <h2 id="inspector-title">Tronchetto Intermedio L1</h2>
           </div>
           <p id="inspector-desc" class="inspector-desc"></p>
           <div id="inspector-controls" class="inspector-controls"></div>
@@ -551,7 +573,11 @@
           <div class="fault-toggles">
             <label for="chk-fault-seat1" class="checkbox-label">
               <input type="checkbox" id="chk-fault-seat1" class="visually-hidden">
-              <span>Simula trafilamento sede Otturatore Principale L1 (SG anomalo)</span>
+              <span>Simula trafilamento sede Otturatore Regolatore L1</span>
+            </label>
+            <label for="chk-fault-monseat1" class="checkbox-label">
+              <input type="checkbox" id="chk-fault-monseat1" class="visually-hidden">
+              <span>Simula trafilamento sede Otturatore MONITOR L1 (test nel Tronchetto)</span>
             </label>
             <label for="chk-fault-pilot1" class="checkbox-label">
               <input type="checkbox" id="chk-fault-pilot1" class="visually-hidden">
@@ -559,7 +585,7 @@
             </label>
             <label for="chk-fault-rupture1" class="checkbox-label">
               <input type="checkbox" id="chk-fault-rupture1" class="visually-hidden">
-              <span>Simula rottura membrana principale / molla L1</span>
+              <span>Simula rottura membrana Regolatore L1 (Spalancamento → Entra Monitor)</span>
             </label>
           </div>
         </section>
@@ -576,13 +602,13 @@
     </div>
   </main>
 
-  <!-- Dialog Nativo Manuale Tecnico: Regolatori Pilotati vs Azione Diretta -->
+  <!-- Dialog Nativo Manuale Tecnico -->
   <dialog id="manual-dialog" closedby="any" aria-labelledby="manual-dialog-title">
     <div class="dialog-inner">
       <header class="dialog-header">
         <div>
           <span class="card-tag">DOCUMENTAZIONE TECNICA TIPO 3</span>
-          <h2 id="manual-dialog-title">Regolatori Pilotati vs Azione Diretta: Funzionamento, Prese d'Impulso e Verifica SG</h2>
+          <h2 id="manual-dialog-title">Guida Tecnica: Manometro nel Tronchetto, Regolatori Pilotati vs Diretti e Prese d'Impulso</h2>
         </div>
         <form method="dialog">
           <button type="submit" value="close" class="btn btn-sm btn-outline" autofocus>Chiudi ✕</button>
@@ -591,75 +617,55 @@
 
       <div class="dialog-content">
         <details name="manual-acc" open>
-          <summary>1. Differenza Costruttiva: Azione Diretta (Fail-Open) vs Pilotato (Fail-Close)</summary>
-          <div class="acc-body">
-            <ul>
-              <li>
-                <strong>Regolatore ad Azione Diretta (es. Pietro Fiorentini Dival 600, Norval) — Normalmente Aperto (Fail-Open):</strong>
-                La molla di taratura spinge direttamente per <em>aprire</em> l'otturatore, mentre la pressione di valle ($P_d$) prelevata dalla presa d'impulso agisce sulla membrana per <em>chiudere</em>. Non richiede alimentazione da monte. Se la presa d'impulso si rompe o viene scaricata, il regolatore si spalanca (Fail-Open).
-              </li>
-              <li>
-                <strong>Regolatore Pilotato (es. Pietro Fiorentini Aperflux 851, Reflux 819, Reval 182 Pilotato) — Normalmente Chiuso (Fail-Close):</strong>
-                La molla sul corpo principale e la pressione a monte ($P_u$) tengono l'otturatore <strong>CHIUSO</strong>. Per aprirsi serve la <strong>Pressione Motrice ($P_{mot}$)</strong> generata dal circuito del <strong>Pilota</strong> (alimentato da monte tramite preriduttore es. <code>R14</code>).
-                Quando la pressione nella presa d'impulso ($P_d$) scende sotto il set-point, il pilota apre e invia $P_{mot} &gt; P_d$ sotto la membrana principale aprendo il regolatore. Quando $P_d$ raggiunge il set-point (o a portata zero), il pilota chiude l'alimentazione e scarica $P_{mot}$ a valle: il differenziale motrice si azzera ($P_{mot} = P_d$) e la molla principale chiude ermeticamente l'otturatore.
-              </li>
-            </ul>
-          </div>
-        </details>
-
-        <details name="manual-acc">
-          <summary>2. Ruolo Cruciale delle Prese d'Impulso (Tronco Monte V2 vs Collettore Valle V2)</summary>
+          <summary>1. Il Manometro e lo Sfiato nel TRONCHETTO (tra Monitor e Regolatore Principale)</summary>
           <div class="acc-body">
             <p>
-              Durante le verifiche funzionali si chiude la valvola di intercettazione di valle <code>V2-L1</code> per isolare la Linea 1 mentre la Seconda Linea (tarata più bassa, $P_{d2} &lt; P_{d1}$) alimenta la rete:
+              Nel tratto di tubazione compreso tra il <strong>Monitor</strong> (a monte) e il <strong>Regolatore Principale</strong> (a valle) — detto <strong>Tronchetto intermedio</strong> — sono installati un manometro (<code>TRONCHETTO</code>) e un rubinetto di sfiato (<code>Sfiato Tronch.</code>):
             </p>
             <ul>
               <li>
-                <strong>Attenzione se la presa d'impulso legge a VALLE di V2 (Collettore):</strong>
-                Non appena chiudi <code>V2-L1</code>, il collettore scende alla pressione della 2ª Linea ($P_{d2}$). Se la presa d'impulso del regolatore L1 pescava a valle di <code>V2-L1</code>, il pilota L1 continua a leggere $P_{d2} &lt; P_{d1}$! Di conseguenza il pilota crede che manchi pressione in rete, manda la massima pressione motrice ($P_{mot}$) e <strong>spalanca</strong> il regolatore L1 facendo salire il tronco chiuso fino al Monitor!
-              </li>
-              <li>
-                <strong>Presa d'impulso sul TRONCO (a monte di V2):</strong>
-                Per eseguire la prova di chiusura ($SG$) del regolatore con <code>V2-L1</code> chiusa, la presa d'impulso deve leggere la pressione del <strong>tronco intermedio (a monte di V2)</strong>.
-              </li>
-            </ul>
-          </div>
-        </details>
-
-        <details name="manual-acc">
-          <summary>3. Come cambia la Verifica dell'SG (Sovrapressione di Chiusura) e la Diagnostica</summary>
-          <div class="acc-body">
-            <ul>
-              <li>
-                <strong>Verifica SG su Regolatore ad Azione Diretta:</strong>
-                Chiusa <code>V2</code> (con impulso sul tronco), si apre e richiude lo sfiato a candela <code>SF</code>. La pressione sale leggermente sopra $P_{d1}$ ($SG$ fisiologico 5–10% necessario a comprimere fisicamente la molla di taratura) e deve stabilizzarsi. Se continua a salire, trafila l'otturatore.
-              </li>
-              <li>
-                <strong>Verifica SG su Regolatore Pilotato (e test differenziale Pilota vs Otturatore):</strong>
-                Nei pilotati la classe $SG$ è strettissima ($1\div 2{,}5\%$) perché basta un minimo incremento sulla membrana del pilota per scaricare $P_{mot}$ e far chiudere il servomotore con tutta la forza della molla + $P_u$.
-                <br><strong>Diagnostica Esclusiva dei Pilotati:</strong> Se a <code>V2</code> e <code>SF</code> chiusi la pressione nel tronco sale oltre l'$SG$, come capisci se trafila la <em>sede dell'otturatore principale</em> oppure l'<em>ugello del pilota</em>?
-                <strong>Chiudendo il rubinetto di Alimentazione Pilota (<code>Alim.Pilota</code>)!</strong>
-                Se chiudendo l'alimentazione del pilota la pressione si ferma, trafilava l'ugello del pilota; se continua a salire anche senza alimentazione pilota, trafila la sede dell'otturatore principale!
-              </li>
-            </ul>
-          </div>
-        </details>
-
-        <details name="manual-acc">
-          <summary>4. Come forzare l'entrata del Monitor: Pilotato vs Azione Diretta</summary>
-          <div class="acc-body">
-            <ul>
-              <li>
-                <strong>Su entrambi (scaricando la presa d'impulso <code>R-IMP</code>):</strong>
-                Se si chiude verso la linea e si <strong>scarica in atmosfera la presa d'impulso</strong> del regolatore principale (o si aumenta la vite di taratura del pilota oltre quella del Monitor), la membrana di misura sente $0\text{ bar}$:
+                <strong>Come capire al volo chi sta lavorando (Monitor vs Regolatore):</strong>
                 <ul>
-                  <li>Nell'<em>Azione Diretta</em> la molla spalanca direttamente l'otturatore.</li>
-                  <li>Nel <em>Pilotato</em> (purché l'<strong>Alimentazione Pilota <code>Alim.Pilota</code> sia APERTA</strong>!) il pilota sente $0\text{ bar}$, manda la massima pressione motrice $P_{mot}$ e spalanca il regolatore principale.</li>
+                  <li>Se <strong>sta lavorando il Regolatore Principale</strong>, il Monitor a monte è completamente aperto: quindi il manometro nel <code>TRONCHETTO</code> segna la <strong>Pressione di Monte ($P_u$, es. $24\text{ bar}$ o $5\text{ bar}$)</strong>!</li>
+                  <li>Se invece il Regolatore Principale è guasto/spalancato e <strong>sta lavorando il Monitor</strong>, tutta la laminazione avviene sul Monitor: quindi la pressione nel <code>TRONCHETTO</code> crolla da $P_u$ e segna la <strong>Pressione di Valle regolata dal Monitor ($P_m$, es. $1{,}65\text{ bar}$)</strong>!</li>
                 </ul>
-                In entrambi i casi il <strong>Monitor</strong> in serie prende il controllo della linea al proprio set-point $P_{m1}$.
               </li>
               <li>
-                <strong>Errore tipico nei Pilotati:</strong> Se su un regolatore pilotato chiudi il rubinetto di <em>Alimentazione Pilota</em> invece della presa d'impulso, il regolatore <strong>NON si apre ma si CHIUDE (Fail-Close)</strong>, quindi il flusso si interrompe e non puoi testare il Monitor!
+                <strong>Come usare lo Sfiato del Tronchetto per verificare la Tenuta / Chiusura ($SG$) del Monitor:</strong>
+                Quando il <strong>Regolatore Principale è completamente chiuso</strong> (ad es. nei regolatori pilotati chiudendo <code>Alim.Pil</code>, oppure con <code>V2</code> chiusa e regolatore in chiusura), il Regolatore Principale funge da sbarramento a valle del tronchetto.
+                Mandando in chiusura il Monitor (o commutando l'impulso del Monitor / chiudendo <code>Alim.Mon</code>) e aprendo/richiudendo lo <strong>Sfiato del Tronchetto</strong>, si verifica sul manometro <code>TRONCHETTO</code> che la pressione si stabilizzi (al valore di $SG$ del Monitor o a $0\text{ bar}$) senza risalire verso la pressione di monte $P_u$!
+              </li>
+            </ul>
+          </div>
+        </details>
+
+        <details name="manual-acc">
+          <summary>2. Differenza Costruttiva: Azione Diretta (Fail-Open) vs Pilotato (Fail-Close)</summary>
+          <div class="acc-body">
+            <ul>
+              <li>
+                <strong>Regolatore ad Azione Diretta (Dival 600, Norval) — Normalmente Aperto (Fail-Open):</strong>
+                La molla di taratura spinge direttamente per <em>aprire</em> l'otturatore, mentre la pressione di valle ($P_d$) prelevata dalla presa d'impulso agisce sulla membrana per <em>chiudere</em>. Se la presa d'impulso viene scaricata, il regolatore si spalanca (Fail-Open).
+              </li>
+              <li>
+                <strong>Regolatore Pilotato (Aperflux 851, Reflux 819, Reval 182 Pilotato) — Normalmente Chiuso (Fail-Close):</strong>
+                La molla sul corpo principale e la pressione a monte ($P_u$) tengono l'otturatore <strong>CHIUSO</strong>. Per aprirsi serve la <strong>Pressione Motrice ($P_{mot}$)</strong> generata dal circuito del <strong>Pilota</strong> (alimentato da monte tramite preriduttore <code>R14</code>).
+              </li>
+            </ul>
+          </div>
+        </details>
+
+        <details name="manual-acc">
+          <summary>3. Ruolo delle Prese d'Impulso (Valle Regolatore vs Valle V2) e Verifica SG</summary>
+          <div class="acc-body">
+            <ul>
+              <li>
+                <strong>Attenzione se la presa d'impulso legge a VALLE di V2 (Collettore):</strong>
+                Quando chiudi <code>V2-L1</code>, il collettore scende alla pressione della 2ª Linea ($P_{d2} &lt; P_{d1}$). Se la presa d'impulso del regolatore L1 pesca a valle di <code>V2-L1</code>, il pilota L1 legge $P_{d2} &lt; P_{d1}$, manda la massima $P_{mot}$ e <strong>spalanca</strong> il regolatore L1 (e vedrai il manometro del <code>TRONCHETTO</code> scendere da $P_u$ a $P_m$ perché entra in lavoro il Monitor!).
+              </li>
+              <li>
+                <strong>Presa d'impulso a MONTE di V2 (tra Regolatore e V2):</strong>
+                Commutando la presa d'impulso prima di <code>V2</code> e sfiorando con <code>SF-L1</code>, il regolatore principale va regolarmente in chiusura ($SG$) e il manometro del <code>TRONCHETTO</code> risale a $P_u$.
               </li>
             </ul>
           </div>
